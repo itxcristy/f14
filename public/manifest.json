@@ -12,6 +12,18 @@
   "scope": "/",
   "icons": [
     {
+      "src": "/main.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/main.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
       "src": "/favicon.ico",
       "sizes": "64x64 32x32 16x16",
       "type": "image/x-icon"

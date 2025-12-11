@@ -31,6 +31,48 @@ export function FullscreenImageViewer({ src, alt, isOpen, onClose }: FullscreenI
   const rafId = useRef<number | null>(null);
   const isDraggingRef = useRef(false);
 
+  // Update image transform directly (no React re-render) - MUST be defined first
+  const updateImageTransform = useCallback(() => {
+    if (!imageRef.current) return;
+    
+    const img = imageRef.current;
+    const x = currentPosition.current.x;
+    const y = currentPosition.current.y;
+    const scale = currentZoom.current;
+    const rot = currentRotation.current;
+    
+    img.style.transform = `translate(${x}px, ${y}px) scale(${scale}) rotate(${rot}deg)`;
+    img.style.willChange = 'transform';
+  }, []);
+
+  // Constrain position - MUST be defined before useEffects
+  const constrainPosition = useCallback(() => {
+    if (!imageRef.current || !containerRef.current || currentZoom.current <= 1) {
+      currentPosition.current = { x: 0, y: 0 };
+      return;
+    }
+
+    const img = imageRef.current;
+    const container = containerRef.current;
+    const zoom = currentZoom.current;
+    
+    const imgWidth = img.naturalWidth || img.offsetWidth;
+    const imgHeight = img.naturalHeight || img.offsetHeight;
+    const containerWidth = container.offsetWidth;
+    const containerHeight = container.offsetHeight;
+    
+    const scaledWidth = imgWidth * zoom;
+    const scaledHeight = imgHeight * zoom;
+    
+    const maxX = Math.max(0, (scaledWidth - containerWidth) / 2);
+    const maxY = Math.max(0, (scaledHeight - containerHeight) / 2);
+    
+    currentPosition.current = {
+      x: Math.max(-maxX, Math.min(maxX, currentPosition.current.x)),
+      y: Math.max(-maxY, Math.min(maxY, currentPosition.current.y)),
+    };
+  }, []);
+
   // Handle fullscreen API
   const toggleFullscreen = useCallback(async () => {
     if (!containerRef.current) return;
@@ -134,48 +176,6 @@ export function FullscreenImageViewer({ src, alt, isOpen, onClose }: FullscreenI
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, isFullscreen, onClose, toggleFullscreen, constrainPosition, updateImageTransform]);
-
-  // Update image transform directly (no React re-render)
-  const updateImageTransform = useCallback(() => {
-    if (!imageRef.current) return;
-    
-    const img = imageRef.current;
-    const x = currentPosition.current.x;
-    const y = currentPosition.current.y;
-    const scale = currentZoom.current;
-    const rot = currentRotation.current;
-    
-    img.style.transform = `translate(${x}px, ${y}px) scale(${scale}) rotate(${rot}deg)`;
-    img.style.willChange = 'transform';
-  }, []);
-
-  // Constrain position
-  const constrainPosition = useCallback(() => {
-    if (!imageRef.current || !containerRef.current || currentZoom.current <= 1) {
-      currentPosition.current = { x: 0, y: 0 };
-      return;
-    }
-
-    const img = imageRef.current;
-    const container = containerRef.current;
-    const zoom = currentZoom.current;
-    
-    const imgWidth = img.naturalWidth || img.offsetWidth;
-    const imgHeight = img.naturalHeight || img.offsetHeight;
-    const containerWidth = container.offsetWidth;
-    const containerHeight = container.offsetHeight;
-    
-    const scaledWidth = imgWidth * zoom;
-    const scaledHeight = imgHeight * zoom;
-    
-    const maxX = Math.max(0, (scaledWidth - containerWidth) / 2);
-    const maxY = Math.max(0, (scaledHeight - containerHeight) / 2);
-    
-    currentPosition.current = {
-      x: Math.max(-maxX, Math.min(maxX, currentPosition.current.x)),
-      y: Math.max(-maxY, Math.min(maxY, currentPosition.current.y)),
-    };
-  }, []);
 
   // Mouse drag handlers
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
