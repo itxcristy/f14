@@ -1239,7 +1239,7 @@ export default function AdminPage() {
                 value={pieceForm.text_content}
                 onChange={(e) => setPieceForm(f => ({ ...f, text_content: e.target.value }))}
                 placeholder="Enter text here. Use 'Add Break' button to mark paragraph/shaair endings for better formatting."
-                className="min-h-[250px] font-arabic text-right"
+                className={`min-h-[250px] font-arabic ${targetLanguage === 'Urdu' || targetLanguage === 'Arabic' ? 'text-right' : 'text-left'}`}
                 dir={targetLanguage === 'Urdu' || targetLanguage === 'Arabic' ? 'rtl' : 'ltr'}
               />
               <p className="text-xs text-muted-foreground mt-1">

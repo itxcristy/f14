@@ -11,6 +11,15 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { useSettings } from '@/hooks/use-settings';
+import { isYouTubeUrl, getYouTubeId } from '@/lib/youtube-audio';
+
+// YouTube IFrame API types
+declare global {
+  interface Window {
+    YT: any;
+    onYouTubeIframeAPIReady: () => void;
+  }
+}
 
 interface EnhancedAudioPlayerProps {
   src: string;
@@ -26,6 +35,7 @@ export function EnhancedAudioPlayer({
   onEnded 
 }: EnhancedAudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const youtubePlayerRef = useRef<any>(null);
   const { settings, updateSetting } = useSettings();
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -35,8 +45,107 @@ export function EnhancedAudioPlayer({
   const [isLoading, setIsLoading] = useState(true);
   const [sleepTimer, setSleepTimer] = useState<number | null>(null);
   const sleepTimerRef = useRef<NodeJS.Timeout>();
+  const isYouTube = isYouTubeUrl(src);
+  const youtubeId = isYouTube ? getYouTubeId(src) : null;
+
+  // Load YouTube IFrame API for YouTube URLs
+  useEffect(() => {
+    if (!isYouTube || !youtubeId) return;
+
+    const playerId = `youtube-player-${youtubeId}`;
+    let interval: NodeJS.Timeout;
+
+    const initPlayer = () => {
+      if (youtubePlayerRef.current) return; // Already initialized
+
+      const container = document.getElementById(playerId);
+      if (!container) return;
+
+      youtubePlayerRef.current = new window.YT.Player(playerId, {
+        videoId: youtubeId,
+        playerVars: {
+          autoplay: 0,
+          controls: 0,
+          disablekb: 1,
+          enablejsapi: 1,
+          fs: 0,
+          iv_load_policy: 3,
+          modestbranding: 1,
+          playsinline: 1,
+          rel: 0,
+          showinfo: 0,
+        },
+        events: {
+          onReady: (event: any) => {
+            const player = event.target;
+            setDuration(player.getDuration());
+            setIsLoading(false);
+          },
+          onStateChange: (event: any) => {
+            if (event.data === window.YT.PlayerState.PLAYING) {
+              setIsPlaying(true);
+            } else if (event.data === window.YT.PlayerState.PAUSED) {
+              setIsPlaying(false);
+            } else if (event.data === window.YT.PlayerState.ENDED) {
+              setIsPlaying(false);
+              if (settings.repeatMode === 'one') {
+                event.target.seekTo(0);
+                event.target.playVideo();
+              } else {
+                onEnded?.();
+              }
+            }
+          },
+        },
+      });
+
+      // Update time for YouTube player
+      interval = setInterval(() => {
+        if (youtubePlayerRef.current && isPlaying) {
+          try {
+            const time = youtubePlayerRef.current.getCurrentTime();
+            setCurrentTime(time);
+            onTimeUpdate?.(time);
+          } catch (e) {
+            // Player might not be ready
+          }
+        }
+      }, 100);
+    };
+
+    // Load YouTube IFrame API script if not already loaded
+    if (!window.YT) {
+      const tag = document.createElement('script');
+      tag.src = 'https://www.youtube.com/iframe_api';
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+
+      const originalCallback = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => {
+        if (originalCallback) originalCallback();
+        initPlayer();
+      };
+    } else {
+      // API already loaded, create player immediately
+      setTimeout(initPlayer, 100);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+      if (youtubePlayerRef.current) {
+        try {
+          youtubePlayerRef.current.destroy();
+        } catch (e) {
+          // Ignore destroy errors
+        }
+        youtubePlayerRef.current = null;
+      }
+    };
+  }, [isYouTube, youtubeId, isPlaying, settings.repeatMode, onTimeUpdate, onEnded]);
 
   useEffect(() => {
+    if (isYouTube) return; // Skip audio setup for YouTube URLs
+
     const audio = audioRef.current;
     if (!audio) return;
 
@@ -76,13 +185,19 @@ export function EnhancedAudioPlayer({
       audio.removeEventListener('canplay', handleCanPlay);
       audio.removeEventListener('waiting', handleWaiting);
     };
-  }, [settings.repeatMode, settings.playbackSpeed, onTimeUpdate, onEnded]);
+  }, [settings.repeatMode, settings.playbackSpeed, onTimeUpdate, onEnded, isYouTube]);
 
   useEffect(() => {
-    if (audioRef.current) {
+    if (isYouTube && youtubePlayerRef.current) {
+      try {
+        youtubePlayerRef.current.setPlaybackRate(settings.playbackSpeed);
+      } catch (e) {
+        // Player might not be ready
+      }
+    } else if (audioRef.current) {
       audioRef.current.playbackRate = settings.playbackSpeed;
     }
-  }, [settings.playbackSpeed]);
+  }, [settings.playbackSpeed, isYouTube]);
 
   useEffect(() => {
     if (sleepTimer && isPlaying) {
@@ -103,7 +218,13 @@ export function EnhancedAudioPlayer({
   }, [sleepTimer, isPlaying]);
 
   const togglePlay = () => {
-    if (audioRef.current) {
+    if (isYouTube && youtubePlayerRef.current) {
+      if (isPlaying) {
+        youtubePlayerRef.current.pauseVideo();
+      } else {
+        youtubePlayerRef.current.playVideo();
+      }
+    } else if (audioRef.current) {
       if (isPlaying) {
         audioRef.current.pause();
       } else {
@@ -114,21 +235,38 @@ export function EnhancedAudioPlayer({
   };
 
   const toggleMute = () => {
-    if (audioRef.current) {
+    if (isYouTube && youtubePlayerRef.current) {
+      if (isMuted) {
+        youtubePlayerRef.current.unMute();
+      } else {
+        youtubePlayerRef.current.mute();
+      }
+      setIsMuted(!isMuted);
+    } else if (audioRef.current) {
       audioRef.current.muted = !isMuted;
       setIsMuted(!isMuted);
     }
   };
 
   const handleSeek = (value: number[]) => {
-    if (audioRef.current) {
+    if (isYouTube && youtubePlayerRef.current) {
+      youtubePlayerRef.current.seekTo(value[0], true);
+      setCurrentTime(value[0]);
+    } else if (audioRef.current) {
       audioRef.current.currentTime = value[0];
       setCurrentTime(value[0]);
     }
   };
 
   const handleVolumeChange = (value: number[]) => {
-    if (audioRef.current) {
+    if (isYouTube && youtubePlayerRef.current) {
+      youtubePlayerRef.current.setVolume(value[0] * 100);
+      setVolume(value[0]);
+      if (value[0] > 0 && isMuted) {
+        setIsMuted(false);
+        youtubePlayerRef.current.unMute();
+      }
+    } else if (audioRef.current) {
       audioRef.current.volume = value[0];
       setVolume(value[0]);
       if (value[0] > 0 && isMuted) {
@@ -139,8 +277,12 @@ export function EnhancedAudioPlayer({
   };
 
   const skip = (seconds: number) => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = Math.max(0, Math.min(duration, currentTime + seconds));
+    const newTime = Math.max(0, Math.min(duration, currentTime + seconds));
+    if (isYouTube && youtubePlayerRef.current) {
+      youtubePlayerRef.current.seekTo(newTime, true);
+      setCurrentTime(newTime);
+    } else if (audioRef.current) {
+      audioRef.current.currentTime = newTime;
     }
   };
 
@@ -162,7 +304,12 @@ export function EnhancedAudioPlayer({
 
   return (
     <div className="bg-gradient-to-br from-primary/5 via-card to-accent/5 rounded-2xl p-5 shadow-card border border-border/50">
-      <audio ref={audioRef} src={src} preload="metadata" />
+      {!isYouTube && <audio ref={audioRef} src={src} preload="metadata" />}
+      {isYouTube && youtubeId && (
+        <div className="hidden">
+          <div id={`youtube-player-${youtubeId}`} />
+        </div>
+      )}
       
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
