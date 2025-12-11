@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   ChevronLeft, User, Globe, Bookmark, Eye, Calendar,
-  Clock, Hash, Tag, Users, Maximize2, X as XIcon, ZoomIn, ZoomOut
+  Clock, Hash, Tag, Users, Maximize2
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -10,13 +10,10 @@ import { ReaderToolbar } from '@/components/ReaderToolbar';
 import { SettingsPanel } from '@/components/SettingsPanel';
 import { EnhancedAudioPlayer } from '@/components/EnhancedAudioPlayer';
 import { VideoPlayer } from '@/components/VideoPlayer';
+import { FullscreenImageViewer } from '@/components/FullscreenImageViewer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Dialog,
-  DialogContent,
-} from '@/components/ui/dialog';
 import { useSettings } from '@/hooks/use-settings';
 import { useFavorites } from '@/hooks/use-favorites';
 import { useReadingProgress } from '@/hooks/use-reading-progress';
@@ -41,7 +38,6 @@ export default function PiecePage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [currentVerse, setCurrentVerse] = useState(0);
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
-  const [imageZoom, setImageZoom] = useState(1);
   
   const contentRef = useRef<HTMLDivElement>(null);
   const verseRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -304,15 +300,13 @@ export default function PiecePage() {
           {piece.image_url && (
             <div 
               className="relative w-full rounded-2xl overflow-hidden mb-6 cursor-pointer group"
-              onClick={() => {
-                setImageViewerOpen(true);
-                setImageZoom(1);
-              }}
+              onClick={() => setImageViewerOpen(true)}
             >
               <img 
                 src={piece.image_url} 
                 alt={piece.title}
                 className="w-full h-auto max-h-[400px] md:max-h-[500px] object-contain bg-muted/30 transition-transform duration-300 group-hover:scale-[1.02]"
+                loading="lazy"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -429,11 +423,9 @@ export default function PiecePage() {
               <img 
                 src={piece.image_url} 
                 alt={piece.title}
-                className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition-shadow"
-                onClick={() => {
-                  setImageViewerOpen(true);
-                  setImageZoom(1);
-                }}
+                className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
+                onClick={() => setImageViewerOpen(true)}
+                loading="lazy"
               />
               <p className="text-sm text-muted-foreground mt-4 text-center">
                 Click image to view in full size
@@ -530,63 +522,14 @@ export default function PiecePage() {
         onClose={() => setSettingsOpen(false)} 
       />
 
-      {/* Image Viewer Dialog */}
+      {/* Fullscreen Image Viewer */}
       {piece.image_url && (
-        <Dialog open={imageViewerOpen} onOpenChange={setImageViewerOpen}>
-          <DialogContent className="max-w-7xl w-full h-[90vh] p-0 bg-black/95">
-            <div className="relative w-full h-full flex items-center justify-center">
-              <img 
-                src={piece.image_url} 
-                alt={piece.title}
-                className="max-w-full max-h-full object-contain transition-transform duration-300"
-                style={{ transform: `scale(${imageZoom})` }}
-              />
-              
-              {/* Controls */}
-              <div className="absolute top-4 right-4 flex items-center gap-2 bg-black/70 backdrop-blur-sm rounded-lg p-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-white hover:bg-white/20"
-                  onClick={() => setImageZoom(Math.max(0.5, imageZoom - 0.25))}
-                  disabled={imageZoom <= 0.5}
-                >
-                  <ZoomOut className="w-5 h-5" />
-                </Button>
-                <span className="text-white text-sm min-w-[60px] text-center">
-                  {Math.round(imageZoom * 100)}%
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-white hover:bg-white/20"
-                  onClick={() => setImageZoom(Math.min(3, imageZoom + 0.25))}
-                  disabled={imageZoom >= 3}
-                >
-                  <ZoomIn className="w-5 h-5" />
-                </Button>
-                <div className="w-px h-6 bg-white/30 mx-1" />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-white hover:bg-white/20"
-                  onClick={() => setImageZoom(1)}
-                >
-                  Reset
-                </Button>
-                <div className="w-px h-6 bg-white/30 mx-1" />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-white hover:bg-white/20"
-                  onClick={() => setImageViewerOpen(false)}
-                >
-                  <XIcon className="w-5 h-5" />
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <FullscreenImageViewer
+          src={piece.image_url}
+          alt={piece.title}
+          isOpen={imageViewerOpen}
+          onClose={() => setImageViewerOpen(false)}
+        />
       )}
     </div>
   );
