@@ -100,6 +100,34 @@ export function FullscreenImageViewer({ src, alt, isOpen, onClose }: FullscreenI
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
+  // Prevent browser zoom when image viewer is open
+  useEffect(() => {
+    if (isOpen) {
+      // Prevent wheel zoom on document
+      const preventZoom = (e: WheelEvent) => {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      };
+      
+      // Prevent pinch zoom
+      const preventPinchZoom = (e: TouchEvent) => {
+        if (e.touches.length > 1) {
+          e.preventDefault();
+        }
+      };
+      
+      document.addEventListener('wheel', preventZoom, { passive: false });
+      document.addEventListener('touchmove', preventPinchZoom, { passive: false });
+      
+      return () => {
+        document.removeEventListener('wheel', preventZoom);
+        document.removeEventListener('touchmove', preventPinchZoom);
+      };
+    }
+  }, [isOpen]);
+
   // Reset on open/close
   useEffect(() => {
     if (isOpen) {
@@ -141,7 +169,7 @@ export function FullscreenImageViewer({ src, alt, isOpen, onClose }: FullscreenI
           break;
         case '-':
           e.preventDefault();
-          const newZoomOut = Math.max(0.5, currentZoom.current - 0.25);
+          const newZoomOut = Math.max(1.0, currentZoom.current - 0.25); // Min zoom is 1.0 (100%)
           currentZoom.current = newZoomOut;
           setZoom(newZoomOut);
           constrainPosition();
@@ -253,7 +281,7 @@ export function FullscreenImageViewer({ src, alt, isOpen, onClose }: FullscreenI
         touch2.clientY - touch1.clientY
       );
       const scale = distance / touchStartDistance.current;
-      const newZoom = Math.max(0.5, Math.min(5, touchStartZoom.current * scale));
+      const newZoom = Math.max(1.0, Math.min(5, touchStartZoom.current * scale)); // Min zoom is 1.0 (100%)
       currentZoom.current = newZoom;
       setZoom(newZoom);
       
@@ -296,12 +324,16 @@ export function FullscreenImageViewer({ src, alt, isOpen, onClose }: FullscreenI
     }
   }, []);
 
-  // Wheel zoom
+  // Wheel zoom - prevent browser zoom
   const handleWheel = useCallback((e: React.WheelEvent) => {
+    // Always prevent browser zoom when in image viewer
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
+      // Zoom with Ctrl/Cmd + scroll
       const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      const newZoom = Math.max(0.5, Math.min(5, currentZoom.current + delta));
+      const newZoom = Math.max(1.0, Math.min(5, currentZoom.current + delta)); // Min zoom is 1.0 (100%)
       currentZoom.current = newZoom;
       setZoom(newZoom);
       
@@ -380,7 +412,10 @@ export function FullscreenImageViewer({ src, alt, isOpen, onClose }: FullscreenI
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       onWheel={handleWheel}
-      style={{ cursor: currentZoom.current > 1 && isDragging ? 'grabbing' : currentZoom.current > 1 ? 'grab' : 'default' }}
+      style={{ 
+        cursor: currentZoom.current > 1 && isDragging ? 'grabbing' : currentZoom.current > 1 ? 'grab' : 'default',
+        touchAction: 'none' // Prevent browser zoom gestures
+      }}
     >
       {/* Image Container */}
       <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
@@ -430,11 +465,11 @@ export function FullscreenImageViewer({ src, alt, isOpen, onClose }: FullscreenI
           size="icon"
           className="text-white hover:bg-white/20 h-9 w-9"
           onClick={() => {
-            const newZoom = Math.max(0.5, currentZoom.current - 0.25);
+            const newZoom = Math.max(1.0, currentZoom.current - 0.25); // Min zoom is 1.0 (100%)
             currentZoom.current = newZoom;
             setZoom(newZoom);
           }}
-          disabled={zoom <= 0.5}
+          disabled={zoom <= 1.0}
           title="Zoom Out (-)"
         >
           <ZoomOut className="w-4 h-4" />

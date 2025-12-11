@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
   ChevronLeft, Filter, Grid3X3, List, SortAsc, 
-  ArrowUpDown, Music, Video, Eye, Calendar
+  ArrowUpDown, Music, Video, Eye, Calendar, ArrowUpRight, Volume2
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -286,22 +286,32 @@ export default function CategoryPage() {
             
             <div className="flex gap-2">
               {/* View Mode Toggle */}
-              <div className="flex bg-card rounded-lg p-1 border border-border">
+              <div className="inline-flex bg-card rounded-xl p-1 border border-border/50 shadow-soft">
                 <Button
-                  variant={viewMode === 'list' ? 'default' : 'ghost'}
+                  variant="ghost"
                   size="sm"
                   onClick={() => setViewMode('list')}
-                  className="h-8 px-3"
+                  className={`h-9 px-4 transition-all duration-200 ${
+                    viewMode === 'list' 
+                      ? 'bg-primary text-primary-foreground shadow-sm' 
+                      : 'hover:bg-secondary/50 text-muted-foreground'
+                  }`}
                 >
-                  <List className="w-4 h-4" />
+                  <List className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">List</span>
                 </Button>
                 <Button
-                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                  variant="ghost"
                   size="sm"
                   onClick={() => setViewMode('grid')}
-                  className="h-8 px-3"
+                  className={`h-9 px-4 transition-all duration-200 ${
+                    viewMode === 'grid' 
+                      ? 'bg-primary text-primary-foreground shadow-sm' 
+                      : 'hover:bg-secondary/50 text-muted-foreground'
+                  }`}
                 >
-                  <Grid3X3 className="w-4 h-4" />
+                  <Grid3X3 className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">Grid</span>
                 </Button>
               </div>
               
@@ -396,18 +406,85 @@ export default function CategoryPage() {
 
         {/* Pieces */}
         {filteredPieces.length > 0 ? (
-          <div className={
-            viewMode === 'grid' 
-              ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' 
-              : 'grid gap-4'
-          }>
+          <div 
+            className={`transition-all duration-300 ${
+              viewMode === 'grid' 
+                ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6' 
+                : 'space-y-3'
+            }`}
+          >
             {filteredPieces.map((piece, i) => (
-              <PieceCard 
-                key={piece.id} 
-                piece={piece} 
-                index={i} 
-                compact={viewMode === 'grid'}
-              />
+              viewMode === 'list' ? (
+                <Link
+                  key={piece.id}
+                  to={`/piece/${piece.id}`}
+                  className="group flex items-center gap-4 p-4 md:p-5 rounded-xl bg-card hover:bg-secondary/50 border border-border/50 hover:border-primary/30 transition-all duration-300 hover:shadow-md animate-slide-up opacity-0"
+                  style={{ animationDelay: `${i * 0.03}s` }}
+                >
+                  {/* Image */}
+                  {piece.image_url ? (
+                    <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden flex-shrink-0 shadow-sm group-hover:shadow-md transition-shadow">
+                      <img 
+                        src={piece.image_url} 
+                        alt={piece.title}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary group-hover:scale-105 transition-all duration-300 shadow-sm">
+                      <Play className="w-6 h-6 md:w-7 md:h-7 text-primary group-hover:text-primary-foreground" />
+                    </div>
+                  )}
+                  
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <h3 className="font-arabic text-base md:text-lg font-semibold text-foreground group-hover:text-primary transition-colors text-right leading-relaxed flex-1" dir="rtl">
+                        {piece.title}
+                      </h3>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {piece.audio_url && (
+                          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary transition-colors">
+                            <Volume2 className="w-3.5 h-3.5 text-primary group-hover:text-primary-foreground" />
+                          </div>
+                        )}
+                        {piece.video_url && (
+                          <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center group-hover:bg-accent transition-colors">
+                            <Video className="w-3.5 h-3.5 text-accent group-hover:text-accent-foreground" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-wrap items-center gap-2 md:gap-3 text-xs md:text-sm">
+                      {piece.reciter && (
+                        <Badge variant="secondary" className="text-xs">
+                          {piece.reciter}
+                        </Badge>
+                      )}
+                      <Badge variant="outline" className="text-xs">
+                        {piece.language}
+                      </Badge>
+                      {piece.view_count > 0 && (
+                        <span className="text-muted-foreground flex items-center gap-1">
+                          <Eye className="w-3 h-3" />
+                          {piece.view_count.toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Arrow */}
+                  <ArrowUpRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100 transform translate-x-[-4px] group-hover:translate-x-0 transition-all duration-300" />
+                </Link>
+              ) : (
+                <PieceCard 
+                  key={piece.id} 
+                  piece={piece} 
+                  index={i} 
+                  compact={true}
+                />
+              )
             ))}
           </div>
         ) : (
