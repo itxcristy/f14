@@ -1,16 +1,28 @@
+import { sanitizeYouTubeUrl } from '@/lib/sanitize';
+
 interface VideoPlayerProps {
   src: string;
   title?: string;
 }
 
 export function VideoPlayer({ src, title }: VideoPlayerProps) {
+  // Sanitize and validate URL
+  const sanitizedUrl = sanitizeYouTubeUrl(src) || sanitizeUrl(src);
+  if (!sanitizedUrl) {
+    return (
+      <div className="bg-card rounded-xl p-8 text-center text-muted-foreground">
+        Invalid video URL
+      </div>
+    );
+  }
+
   // Check if it's a YouTube URL
   const getYouTubeId = (url: string) => {
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&\n?#]+)/);
     return match ? match[1] : null;
   };
 
-  const youtubeId = getYouTubeId(src);
+  const youtubeId = getYouTubeId(sanitizedUrl);
 
   if (youtubeId) {
     return (
@@ -38,7 +50,7 @@ export function VideoPlayer({ src, title }: VideoPlayerProps) {
         <p className="text-sm text-muted-foreground p-4 pb-0 font-medium">{title}</p>
       )}
       <video
-        src={src}
+        src={sanitizedUrl}
         controls
         className="w-full aspect-video"
         preload="metadata"

@@ -13,6 +13,8 @@ import { useReadingProgress } from '@/hooks/use-reading-progress';
 import { useUserRole } from '@/hooks/use-user-role';
 import { safeQuery } from '@/lib/db-utils';
 import { logger } from '@/lib/logger';
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
+import { toast } from '@/hooks/use-toast';
 import type { Category, Piece, Imam } from '@/lib/supabase-types';
 
 export default function Index() {
@@ -135,6 +137,17 @@ export default function Index() {
     if (!query.trim()) {
       setIsSearching(false);
       setSearchResults([]);
+      return;
+    }
+
+    // Check rate limit
+    if (!checkRateLimit(RATE_LIMITS.search, (remaining, resetTime) => {
+      toast({
+        title: 'Too many searches',
+        description: `Please wait ${Math.ceil(resetTime / 1000)} seconds before searching again.`,
+        variant: 'destructive',
+      });
+    })) {
       return;
     }
 

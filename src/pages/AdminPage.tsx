@@ -39,6 +39,7 @@ import { toast } from '@/hooks/use-toast';
 import { useUserRole } from '@/hooks/use-user-role';
 import { safeQuery } from '@/lib/db-utils';
 import { logger } from '@/lib/logger';
+import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import type { Category, Piece, Imam, UserProfile, UploaderPermission } from '@/lib/supabase-types';
 
 export default function AdminPage() {
@@ -303,6 +304,17 @@ export default function AdminPage() {
   const translateText = async () => {
     if (!pieceForm.text_content.trim()) {
       toast({ title: 'Error', description: 'Enter text to translate', variant: 'destructive' });
+      return;
+    }
+
+    // Check rate limit
+    if (!checkRateLimit(RATE_LIMITS.translation, (remaining, resetTime) => {
+      toast({
+        title: 'Translation rate limit',
+        description: `Please wait ${Math.ceil(resetTime / 1000)} seconds before translating again.`,
+        variant: 'destructive',
+      });
+    })) {
       return;
     }
 

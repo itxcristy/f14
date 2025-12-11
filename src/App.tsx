@@ -9,6 +9,7 @@ import { SettingsProvider } from "@/hooks/use-settings";
 import { ReadingProgressProvider } from "@/hooks/use-reading-progress";
 import { FavoritesProvider } from "@/hooks/use-favorites";
 import { UserRoleProvider } from "@/hooks/use-user-role";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import CategoryPage from "./pages/CategoryPage";
 import PiecePage from "./pages/PiecePage";
@@ -21,10 +22,18 @@ import FavoritesPage from "./pages/FavoritesPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
     <ThemeProvider>
       <FontSizeProvider>
         <SettingsProvider>
@@ -65,6 +74,7 @@ const App = () => (
       </FontSizeProvider>
     </ThemeProvider>
   </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;
