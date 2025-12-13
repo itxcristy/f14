@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Sparkles, ArrowRight, TrendingUp, Clock, Star, History, Heart, Users } from 'lucide-react';
+import { BookOpen, Sparkles, ArrowRight, TrendingUp, Clock, Star, History, Heart, Users, Mic } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { CategoryCard } from '@/components/CategoryCard';
 import { PieceCard } from '@/components/PieceCard';
 import { SearchBar } from '@/components/SearchBar';
+import { UpcomingEvents } from '@/components/UpcomingEvents';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useFavorites } from '@/hooks/use-favorites';
@@ -15,7 +16,9 @@ import { safeQuery } from '@/lib/db-utils';
 import { logger } from '@/lib/logger';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import { toast } from '@/hooks/use-toast';
-import type { Category, Piece, Imam } from '@/lib/supabase-types';
+import type { Category, Piece, Imam, AhlulBaitEvent } from '@/lib/supabase-types';
+import { Cake, Heart, Flame, Info, Calendar } from 'lucide-react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 export default function Index() {
   const { role, loading: roleLoading } = useUserRole();
@@ -30,6 +33,7 @@ export default function Index() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ categories: 0, pieces: 0 });
+  const [artists, setArtists] = useState<Array<{ name: string; count: number }>>([]);
   const { favorites } = useFavorites();
   const { getRecentlyRead } = useReadingProgress();
 
@@ -38,6 +42,7 @@ export default function Index() {
     // This prevents race conditions after page refresh
     if (!roleLoading) {
       fetchData();
+      showUpcomingEventToast();
     }
   }, [roleLoading]);
 
@@ -85,11 +90,12 @@ export default function Index() {
     logger.debug('Index: Starting fetchData');
     try {
       logger.debug('Index: Executing queries');
-      const [catRes, recentRes, popularRes, imamRes] = await Promise.all([
+      const [catRes, recentRes, popularRes, imamRes, artistsRes] = await Promise.all([
         safeQuery(async () => await supabase.from('categories').select('*').order('name')),
         safeQuery(async () => await supabase.from('pieces').select('*').order('created_at', { ascending: false }).limit(6)),
         safeQuery(async () => await supabase.from('pieces').select('*').order('view_count', { ascending: false }).limit(4)),
         safeQuery(async () => await supabase.from('imams').select('*').order('order_index, name')),
+        safeQuery(async () => await supabase.from('pieces').select('reciter').not('reciter', 'is', null)),
       ]);
       
       logger.debug('Index: Queries completed', {
@@ -123,6 +129,27 @@ export default function Index() {
         logger.error('Error fetching imams:', imamRes.error);
       } else if (imamRes.data) {
         setImams(imamRes.data as Imam[]);
+      }
+
+      // Process artists/reciters
+      if (artistsRes.error) {
+        logger.error('Error fetching artists:', artistsRes.error);
+      } else if (artistsRes.data) {
+        // Count pieces per reciter
+        const reciterCounts = new Map<string, number>();
+        artistsRes.data.forEach((piece: any) => {
+          if (piece.reciter) {
+            reciterCounts.set(piece.reciter, (reciterCounts.get(piece.reciter) || 0) + 1);
+          }
+        });
+        
+        // Convert to array and sort by count (descending)
+        const artistsArray = Array.from(reciterCounts.entries())
+          .map(([name, count]) => ({ name, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 12); // Show top 12 artists
+        
+        setArtists(artistsArray);
       }
     } catch (error) {
       logger.error('Unexpected error in fetchData:', error);
@@ -214,7 +241,7 @@ export default function Index() {
               <div className="w-px h-12 bg-border" />
               <div className="text-center">
                 <p className="text-3xl md:text-4xl font-bold text-gradient-gold">{recentPieces.length}+</p>
-                <p className="text-sm text-muted-foreground">Pieces</p>
+                <p className="text-sm text-muted-foreground">Recitations</p>
               </div>
               <div className="w-px h-12 bg-border" />
               <div className="text-center">
@@ -231,6 +258,9 @@ export default function Index() {
       </section>
 
       <main className="container pb-20">
+        {/* Upcoming Events Section */}
+        <UpcomingEvents />
+
         {/* Search Results */}
         {isSearching ? (
           <section className="animate-fade-in py-8">
@@ -300,7 +330,7 @@ export default function Index() {
               )}
             </section>
 
-            {/* Browse by Figure */}
+            {/* Browse by Ahlulbayt */}
             {imams.length > 0 && (
               <section className="py-12">
                 <div className="flex items-center justify-between mb-8">
@@ -309,8 +339,8 @@ export default function Index() {
                       <Users className="w-5 h-5 text-emerald-500" />
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold text-foreground">Browse by Figure</h2>
-                      <p className="text-sm text-muted-foreground">Recitations dedicated to Ahlulbayt</p>
+                      <h2 className="text-2xl font-bold text-foreground">Browse by Ahlulbayt (AS)</h2>
+                      <p className="text-sm text-muted-foreground">Recitations in honor of the Holy Personalities</p>
                     </div>
                   </div>
                 </div>
@@ -334,6 +364,69 @@ export default function Index() {
                       )}
                     </Link>
                   ))}
+                </div>
+              </section>
+            )}
+
+            {/* Browse by Artists */}
+            {artists.length > 0 && (
+              <section className="py-12">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                      <Mic className="w-5 h-5 text-purple-500" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold text-foreground">Browse by Artists</h2>
+                      <p className="text-sm text-muted-foreground">Discover recitations by your favorite artists</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  {artists.map((artist, i) => {
+                    // Generate initials from name
+                    const getInitials = (name: string) => {
+                      const words = name.trim().split(/\s+/);
+                      if (words.length >= 2) {
+                        return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+                      }
+                      return name.substring(0, 2).toUpperCase();
+                    };
+
+                    // Generate gradient color based on name
+                    const colors = [
+                      'from-primary to-accent',
+                      'from-purple-500 to-pink-500',
+                      'from-blue-500 to-cyan-500',
+                      'from-emerald-500 to-teal-500',
+                      'from-amber-500 to-orange-500',
+                      'from-rose-500 to-pink-500',
+                    ];
+                    const colorIndex = artist.name.charCodeAt(0) % colors.length;
+                    const gradient = colors[colorIndex];
+
+                    return (
+                      <Link
+                        key={artist.name}
+                        to={`/artist/${encodeURIComponent(artist.name)}`}
+                        className="group flex flex-col items-center p-4 rounded-xl bg-card hover:bg-secondary/50 transition-all duration-300 animate-slide-up opacity-0"
+                        style={{ animationDelay: `${i * 0.05}s` }}
+                      >
+                        <Avatar className="w-16 h-16 mb-3 group-hover:scale-110 transition-transform duration-300">
+                          <AvatarFallback className={`bg-gradient-to-br ${gradient} text-white font-bold text-lg shadow-elevated`}>
+                            {getInitials(artist.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <h3 className="font-semibold text-foreground text-sm text-center group-hover:text-primary transition-colors line-clamp-2">
+                          {artist.name}
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {artist.count} {artist.count === 1 ? 'recitation' : 'recitations'}
+                        </p>
+                      </Link>
+                    );
+                  })}
                 </div>
               </section>
             )}
@@ -371,7 +464,7 @@ export default function Index() {
                     </div>
                     <div>
                       <h2 className="text-2xl font-bold text-foreground">Your Favorites</h2>
-                      <p className="text-sm text-muted-foreground">Pieces you've saved</p>
+                      <p className="text-sm text-muted-foreground">Recitations you've saved</p>
                     </div>
                   </div>
                   <Button asChild variant="outline" className="rounded-xl">
@@ -400,7 +493,7 @@ export default function Index() {
                     </div>
                     <div>
                       <h2 className="text-2xl font-bold text-foreground">Most Popular</h2>
-                      <p className="text-sm text-muted-foreground">Top viewed pieces</p>
+                      <p className="text-sm text-muted-foreground">Top viewed recitations</p>
                     </div>
                   </div>
                 </div>
@@ -445,7 +538,7 @@ export default function Index() {
                     Contribute to Our Collection
                   </h2>
                   <p className="text-primary-foreground/80 max-w-xl mx-auto mb-6">
-                    Help preserve and share islamic poetry. Add your favorite pieces to our growing library.
+                    Help preserve and share islamic poetry. Add your favorite recitations to our growing library.
                   </p>
                   <Button asChild size="lg" className="rounded-xl bg-card text-foreground hover:bg-card/90 shadow-elevated">
                     <Link to="/auth">

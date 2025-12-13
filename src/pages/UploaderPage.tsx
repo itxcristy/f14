@@ -40,7 +40,7 @@ export default function UploaderPage() {
   const [uploading, setUploading] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [sourceLanguage, setSourceLanguage] = useState('Hinglish');
-  const [targetLanguage, setTargetLanguage] = useState('Urdu');
+  const [targetLanguage, setTargetLanguage] = useState('Kashmiri');
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [imageViewerUrl, setImageViewerUrl] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -61,6 +61,9 @@ export default function UploaderPage() {
   });
 
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/beff2a73-2541-407a-b62e-088f90641c0f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'UploaderPage.tsx:63',message:'checkAuth effect triggered',data:{role,roleLoading},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     checkAuth();
   }, [role, roleLoading]);
 
@@ -71,9 +74,20 @@ export default function UploaderPage() {
   }, [role]);
 
   const checkAuth = async () => {
-    if (roleLoading) return;
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/beff2a73-2541-407a-b62e-088f90641c0f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'UploaderPage.tsx:73',message:'checkAuth called',data:{role,roleLoading},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+    if (roleLoading) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/beff2a73-2541-407a-b62e-088f90641c0f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'UploaderPage.tsx:75',message:'role still loading, waiting',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
+      return;
+    }
     
     if (role !== 'uploader' && role !== 'admin') {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/beff2a73-2541-407a-b62e-088f90641c0f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'UploaderPage.tsx:82',message:'redirecting to home - not uploader/admin',data:{role},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       toast({
         title: 'Access Denied',
         description: 'You need uploader permissions to access this page.',
@@ -142,14 +156,14 @@ export default function UploaderPage() {
 
       if (figureRes.error) {
         logger.error('Error fetching imams:', figureRes.error);
-        toast({ title: 'Error', description: 'Failed to load imams', variant: 'destructive' });
+        toast({ title: 'Error', description: 'Failed to load Ahlulbayt', variant: 'destructive' });
       } else if (figureRes.data) {
         setImams(figureRes.data as Imam[]);
       }
 
       if (pieceRes.error) {
         logger.error('Error fetching pieces:', pieceRes.error);
-        toast({ title: 'Error', description: 'Failed to load pieces', variant: 'destructive' });
+        toast({ title: 'Error', description: 'Failed to load recitations', variant: 'destructive' });
       } else if (pieceRes.data) {
         // Filter pieces to only show those user can access
         const accessiblePieces = (pieceRes.data as Piece[]).filter(piece => {
@@ -375,7 +389,7 @@ export default function UploaderPage() {
       if (!hasCategoryPerm || !hasImamPerm) {
         toast({
           title: 'Permission Denied',
-          description: 'You do not have permission to edit this piece.',
+          description: 'You do not have permission to edit this recitation.',
           variant: 'destructive',
         });
         return;
@@ -402,7 +416,7 @@ export default function UploaderPage() {
         category_id: categories[0]?.id || '',
         imam_id: '',
         reciter: '',
-        language: 'Urdu',
+        language: 'Kashmiri',
         text_content: '',
         audio_url: '',
         video_url: '',
@@ -432,7 +446,7 @@ export default function UploaderPage() {
       if (pieceForm.imam_id && !permissions.imamIds.includes(pieceForm.imam_id)) {
         toast({
           title: 'Permission Denied',
-          description: 'You do not have permission to upload for this imam.',
+          description: 'You do not have permission to upload for this Holy Personality.',
           variant: 'destructive',
         });
         return;
@@ -460,20 +474,20 @@ export default function UploaderPage() {
       );
 
       if (error) {
-        toast({ title: 'Error', description: error.message || 'Failed to update piece', variant: 'destructive' });
+        toast({ title: 'Error', description: error.message || 'Failed to update recitation', variant: 'destructive' });
         return;
       }
-      toast({ title: 'Success', description: 'Piece updated' });
+      toast({ title: 'Success', description: 'Recitation updated' });
     } else {
       const { error } = await safeQuery(async () =>
         await supabase.from('pieces').insert([data])
       );
 
       if (error) {
-        toast({ title: 'Error', description: error.message || 'Failed to create piece', variant: 'destructive' });
+        toast({ title: 'Error', description: error.message || 'Failed to create recitation', variant: 'destructive' });
         return;
       }
-      toast({ title: 'Success', description: 'Piece created' });
+      toast({ title: 'Success', description: 'Recitation created' });
     }
 
     setPieceDialogOpen(false);
@@ -522,7 +536,7 @@ export default function UploaderPage() {
           <TabsList className="bg-card">
             <TabsTrigger value="pieces" className="gap-2">
               <FileText className="w-4 h-4" />
-              Pieces ({pieces.length})
+              Recitations ({pieces.length})
             </TabsTrigger>
           </TabsList>
 
@@ -533,7 +547,7 @@ export default function UploaderPage() {
                 disabled={categories.length === 0}
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Add Piece
+                Add Recitation
               </Button>
             </div>
 
@@ -575,7 +589,7 @@ export default function UploaderPage() {
               })}
               {pieces.length === 0 && (
                 <div className="text-center py-12 text-muted-foreground">
-                  No pieces yet. Add your first recitation!
+                  No recitations yet. Add your first recitation!
                 </div>
               )}
             </div>
@@ -627,13 +641,13 @@ export default function UploaderPage() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="piece-imam">Dedicated To (Imam)</Label>
+                <Label htmlFor="piece-imam">In Honor Of</Label>
                 <Select
                   value={pieceForm.imam_id}
                   onValueChange={(v) => setPieceForm(f => ({ ...f, imam_id: v }))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select imam" />
+                    <SelectValue placeholder="Select Holy Personality" />
                   </SelectTrigger>
                   <SelectContent className="bg-card border border-border">
                     <SelectItem value="">None</SelectItem>
@@ -656,6 +670,7 @@ export default function UploaderPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-card border border-border">
+                    <SelectItem value="Kashmiri">Kashmiri</SelectItem>
                     <SelectItem value="Urdu">Urdu</SelectItem>
                     <SelectItem value="Arabic">Arabic</SelectItem>
                     <SelectItem value="Persian">Persian</SelectItem>
@@ -758,6 +773,7 @@ export default function UploaderPage() {
                     <SelectContent>
                       <SelectItem value="Hinglish">Hinglish</SelectItem>
                       <SelectItem value="English">English</SelectItem>
+                      <SelectItem value="Kashmiri">Kashmiri</SelectItem>
                       <SelectItem value="Urdu">Urdu</SelectItem>
                       <SelectItem value="Arabic">Arabic</SelectItem>
                       <SelectItem value="Persian">Persian</SelectItem>
@@ -771,6 +787,7 @@ export default function UploaderPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="Kashmiri">Kashmiri</SelectItem>
                       <SelectItem value="Urdu">Urdu</SelectItem>
                       <SelectItem value="Arabic">Arabic</SelectItem>
                       <SelectItem value="English">English</SelectItem>
@@ -786,8 +803,8 @@ export default function UploaderPage() {
                 value={pieceForm.text_content}
                 onChange={(e) => setPieceForm(f => ({ ...f, text_content: e.target.value }))}
                 placeholder="Enter text here. Use 'Add Break' button to mark paragraph/shaair endings for better formatting."
-                className={`min-h-[250px] font-arabic ${targetLanguage === 'Urdu' || targetLanguage === 'Arabic' ? 'text-right' : 'text-left'}`}
-                dir={targetLanguage === 'Urdu' || targetLanguage === 'Arabic' ? 'rtl' : 'ltr'}
+                className={`min-h-[250px] font-arabic ${targetLanguage === 'Kashmiri' || targetLanguage === 'Urdu' || targetLanguage === 'Arabic' ? 'text-right' : 'text-left'}`}
+                dir={targetLanguage === 'Kashmiri' || targetLanguage === 'Urdu' || targetLanguage === 'Arabic' ? 'rtl' : 'ltr'}
               />
             </div>
             

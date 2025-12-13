@@ -111,7 +111,7 @@ export function ReaderToolbar({
                 <ChevronLeft className="w-5 h-5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Previous piece</TooltipContent>
+            <TooltipContent>Previous recitation</TooltipContent>
           </Tooltip>
           
           <Tooltip>
@@ -126,7 +126,7 @@ export function ReaderToolbar({
                 <ChevronRight className="w-5 h-5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Next piece</TooltipContent>
+            <TooltipContent>Next recitation</TooltipContent>
           </Tooltip>
         </div>
 

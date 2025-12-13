@@ -213,7 +213,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label>Auto-Play Next</Label>
-                  <p className="text-xs text-muted-foreground">Play next piece automatically</p>
+                  <p className="text-xs text-muted-foreground">Play next recitation automatically</p>
                 </div>
                 <Switch
                   checked={settings.autoPlayNext}

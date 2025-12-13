@@ -11,6 +11,7 @@ import { SettingsPanel } from '@/components/SettingsPanel';
 import { EnhancedAudioPlayer } from '@/components/EnhancedAudioPlayer';
 import { VideoPlayer } from '@/components/VideoPlayer';
 import { FullscreenImageViewer } from '@/components/FullscreenImageViewer';
+import { RecitationLayout } from '@/components/RecitationLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -245,7 +246,7 @@ export default function PiecePage() {
             </div>
             <h1 className="font-display text-2xl font-semibold mb-2">Content Not Found</h1>
             <p className="text-muted-foreground mb-6">
-              The piece you're looking for doesn't exist or has been removed.
+              The recitation you're looking for doesn't exist or has been removed.
             </p>
             <Button asChild>
               <Link to="/">
@@ -260,12 +261,7 @@ export default function PiecePage() {
     );
   }
 
-  // Process text content: handle break points and split into verses
-  const processedText = piece.text_content
-    .replace(/\|\|BREAK\|\|/g, '\n\n') // Convert break markers to double newlines
-    .replace(/\n{3,}/g, '\n\n'); // Normalize multiple newlines to double newlines
-  
-  const verses = processedText.split('\n\n').filter(v => v.trim().length > 0);
+  // Calculate word count and reading time
   const wordCount = piece.text_content.split(/\s+/).length;
   const readingTime = Math.ceil(wordCount / 150); // ~150 words per minute for poetry
 
@@ -299,13 +295,13 @@ export default function PiecePage() {
           {/* Cover Image - Enhanced */}
           {piece.image_url && (
             <div 
-              className="relative w-full rounded-2xl overflow-hidden mb-6 cursor-pointer group"
+              className="relative w-full aspect-[16/9] rounded-2xl overflow-hidden mb-6 cursor-pointer group bg-muted/30"
               onClick={() => setImageViewerOpen(true)}
             >
               <img 
                 src={piece.image_url} 
                 alt={piece.title}
-                className="w-full h-auto max-h-[400px] md:max-h-[500px] object-contain bg-muted/30 transition-transform duration-300 group-hover:scale-[1.02]"
+                className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.02]"
                 loading="lazy"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -433,46 +429,29 @@ export default function PiecePage() {
             </div>
           </article>
         ) : (
-          /* Text Content - Reader View */
+          /* Text Content - Reader View with Layout System */
           <article 
             ref={contentRef}
             className={`rounded-2xl p-6 md:p-10 lg:p-12 shadow-card border border-border/50 ${getReaderBgClass()} ${
               !settings.animationsEnabled ? '' : 'transition-all duration-300'
             }`}
           >
-            <div 
-              className={settings.compactMode ? 'space-y-2' : 'space-y-6'}
-              style={{ 
-                fontSize: `${settings.fontSize}px`,
-                lineHeight: settings.lineHeight,
-                fontFamily: getFontFamily(),
-                textAlign: settings.textAlign,
+            <RecitationLayout
+              textContent={piece.text_content}
+              title={piece.title}
+              reciter={piece.reciter}
+              className=""
+              fontSize={settings.fontSize}
+              lineHeight={settings.lineHeight}
+              fontFamily={getFontFamily()}
+              compactMode={settings.compactMode}
+              highlightCurrentVerse={settings.highlightCurrentVerse}
+              currentVerse={currentVerse}
+              showVerseNumbers={settings.showVerseNumbers}
+              onVerseRef={(index, el) => {
+                verseRefs.current[index] = el;
               }}
-              dir="rtl"
-            >
-              {verses.map((verse, index) => (
-                <div 
-                  key={index}
-                  ref={(el) => { verseRefs.current[index] = el; }}
-                  className={`py-4 px-4 rounded-xl transition-all duration-300 ${
-                    settings.highlightCurrentVerse && currentVerse === index 
-                      ? 'bg-primary/10 border-l-4 border-primary' 
-                      : 'hover:bg-muted/50'
-                  }`}
-                >
-                  {settings.showVerseNumbers && (
-                    <span className="inline-block text-xs text-muted-foreground bg-muted rounded-full w-6 h-6 leading-6 text-center ml-3 float-left">
-                      {index + 1}
-                    </span>
-                  )}
-                  {verse.split('\n').map((line, lineIndex) => (
-                    <p key={lineIndex} className={lineIndex > 0 ? 'mt-2' : ''}>
-                      {line}
-                    </p>
-                  ))}
-                </div>
-              ))}
-            </div>
+            />
           </article>
         )}
 

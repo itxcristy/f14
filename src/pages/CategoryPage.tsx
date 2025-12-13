@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
   ChevronLeft, Filter, Grid3X3, List, SortAsc, 
-  ArrowUpDown, Music, Video, Eye, Calendar, ArrowUpRight, Volume2
+  ArrowUpDown, Music, Video, Eye, Calendar, ArrowUpRight, Volume2, Play
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -492,8 +492,8 @@ export default function CategoryPage() {
             <Filter className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground mb-4">
               {hasActiveFilters 
-                ? 'No pieces match your filters'
-                : 'No pieces in this category yet'}
+                ? 'No recitations match your filters'
+                : 'No recitations in this category yet'}
             </p>
             {hasActiveFilters && (
               <Button variant="outline" onClick={clearFilters}>

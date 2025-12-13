@@ -58,3 +58,27 @@ export interface Piece {
   category?: Category;
   imam?: Imam;
 }
+
+export interface SiteSettings {
+  id: string;
+  site_name: string;
+  site_tagline: string | null;
+  logo_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type EventType = 'birthday' | 'death' | 'martyrdom' | 'other';
+
+export interface AhlulBaitEvent {
+  id: string;
+  imam_id: string;
+  event_type: EventType;
+  event_date: string;
+  event_name: string;
+  description: string | null;
+  is_annual: boolean;
+  created_at: string;
+  updated_at: string;
+  imam?: Imam;
+}

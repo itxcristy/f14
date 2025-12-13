@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit2, Trash2, FolderOpen, FileText, Loader2, ChevronLeft, Upload, Image, Users, Languages, Maximize2, ZoomIn, ZoomOut, X as XIcon, Scissors, UserCog, Shield, Key } from 'lucide-react';
+import { Plus, Edit2, Trash2, FolderOpen, FileText, Loader2, ChevronLeft, Upload, Image, Users, Languages, Maximize2, ZoomIn, ZoomOut, X as XIcon, Scissors, UserCog, Shield, Key, Settings } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
@@ -40,11 +40,11 @@ import { useUserRole } from '@/hooks/use-user-role';
 import { safeQuery } from '@/lib/db-utils';
 import { logger } from '@/lib/logger';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
-import type { Category, Piece, Imam, UserProfile, UploaderPermission } from '@/lib/supabase-types';
+import type { Category, Piece, Imam, UserProfile, UploaderPermission, SiteSettings } from '@/lib/supabase-types';
 
 export default function AdminPage() {
   const navigate = useNavigate();
-  const { role: currentRole } = useUserRole();
+  const { role: currentRole, loading: roleLoading } = useUserRole();
   const [categories, setCategories] = useState<Category[]>([]);
   const [pieces, setPieces] = useState<Piece[]>([]);
   const [imams, setImams] = useState<Imam[]>([]);
@@ -54,7 +54,7 @@ export default function AdminPage() {
   const [uploading, setUploading] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [sourceLanguage, setSourceLanguage] = useState('Hinglish');
-  const [targetLanguage, setTargetLanguage] = useState('Urdu');
+  const [targetLanguage, setTargetLanguage] = useState('Kashmiri');
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [imageViewerUrl, setImageViewerUrl] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -97,9 +97,20 @@ export default function AdminPage() {
   // Delete Dialog
   const [deleteDialog, setDeleteDialog] = useState<{ type: 'category' | 'piece' | 'imam'; id: string } | null>(null);
 
+  // Site Settings
+  const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
+  const [siteSettingsForm, setSiteSettingsForm] = useState({
+    site_name: 'Kalam Reader',
+    site_tagline: 'islamic poetry',
+    logo_url: '/main.png',
+  });
+
   useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/beff2a73-2541-407a-b62e-088f90641c0f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AdminPage.tsx:108',message:'checkAuth effect triggered',data:{currentRole,roleLoading},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     checkAuth();
-  }, [currentRole]);
+  }, [currentRole, roleLoading]);
 
   useEffect(() => {
     if (currentRole === 'admin') {
@@ -108,7 +119,20 @@ export default function AdminPage() {
   }, [currentRole]);
 
   const checkAuth = async () => {
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/beff2a73-2541-407a-b62e-088f90641c0f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AdminPage.tsx:118',message:'checkAuth called',data:{currentRole,roleLoading},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
+    if (roleLoading) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/beff2a73-2541-407a-b62e-088f90641c0f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AdminPage.tsx:120',message:'role still loading, waiting',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
+      return;
+    }
+
     if (currentRole !== 'admin') {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/beff2a73-2541-407a-b62e-088f90641c0f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AdminPage.tsx:125',message:'redirecting to home - not admin',data:{currentRole},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       toast({
         title: 'Access Denied',
         description: 'Only admins can access this page.',
@@ -118,8 +142,17 @@ export default function AdminPage() {
       return;
     }
 
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/beff2a73-2541-407a-b62e-088f90641c0f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AdminPage.tsx:129',message:'checking session',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
     const { data: { session } } = await supabase.auth.getSession();
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/beff2a73-2541-407a-b62e-088f90641c0f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AdminPage.tsx:131',message:'session check result',data:{hasSession:!!session},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    // #endregion
     if (!session) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/beff2a73-2541-407a-b62e-088f90641c0f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AdminPage.tsx:133',message:'redirecting to auth - no session',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      // #endregion
       navigate('/auth');
       return;
     }
@@ -128,11 +161,12 @@ export default function AdminPage() {
 
   const fetchData = async () => {
     try {
-      const [catRes, pieceRes, imamRes, usersRes] = await Promise.all([
+      const [catRes, pieceRes, imamRes, usersRes, siteSettingsRes] = await Promise.all([
         safeQuery(async () => await supabase.from('categories').select('*').order('name')),
         safeQuery(async () => await supabase.from('pieces').select('*').order('created_at', { ascending: false })),
         safeQuery(async () => await supabase.from('imams').select('*').order('order_index, name')),
         safeQuery(async () => await (supabase as any).from('profiles').select('*').order('created_at', { ascending: false })),
+        safeQuery(async () => await supabase.from('site_settings').select('*').eq('id', '00000000-0000-0000-0000-000000000000').maybeSingle()),
       ]);
 
       if (catRes.error) {
@@ -144,14 +178,14 @@ export default function AdminPage() {
 
       if (pieceRes.error) {
         logger.error('Error fetching pieces:', pieceRes.error);
-        toast({ title: 'Error', description: 'Failed to load pieces', variant: 'destructive' });
+        toast({ title: 'Error', description: 'Failed to load recitations', variant: 'destructive' });
       } else if (pieceRes.data) {
         setPieces(pieceRes.data as Piece[]);
       }
 
       if (imamRes.error) {
         logger.error('Error fetching imams:', imamRes.error);
-        toast({ title: 'Error', description: 'Failed to load imams', variant: 'destructive' });
+        toast({ title: 'Error', description: 'Failed to load Ahlulbayt', variant: 'destructive' });
       } else if (imamRes.data) {
         setImams(imamRes.data as Imam[]);
       }
@@ -161,6 +195,18 @@ export default function AdminPage() {
         toast({ title: 'Error', description: 'Failed to load users', variant: 'destructive' });
       } else if (usersRes.data) {
         setUserProfiles(usersRes.data as UserProfile[]);
+      }
+
+      if (siteSettingsRes.error) {
+        logger.error('Error fetching site settings:', siteSettingsRes.error);
+      } else if (siteSettingsRes.data) {
+        const settings = siteSettingsRes.data as SiteSettings;
+        setSiteSettings(settings);
+        setSiteSettingsForm({
+          site_name: settings.site_name,
+          site_tagline: settings.site_tagline || 'islamic poetry',
+          logo_url: settings.logo_url || '/main.png',
+        });
       }
     } catch (error) {
       logger.error('Unexpected error in fetchData:', error);
@@ -475,7 +521,7 @@ export default function AdminPage() {
         toast({ title: 'Error', description: error.message, variant: 'destructive' });
         return;
       }
-      toast({ title: 'Success', description: 'Imam updated' });
+      toast({ title: 'Success', description: 'Holy Personality updated' });
     } else {
       const { error } = await supabase.from('imams').insert([data]);
 
@@ -483,7 +529,7 @@ export default function AdminPage() {
         toast({ title: 'Error', description: error.message, variant: 'destructive' });
         return;
       }
-      toast({ title: 'Success', description: 'Imam created' });
+      toast({ title: 'Success', description: 'Holy Personality created' });
     }
 
     setImamDialogOpen(false);
@@ -512,7 +558,7 @@ export default function AdminPage() {
         category_id: categories[0]?.id || '',
         imam_id: '',
         reciter: '',
-        language: 'Urdu',
+        language: 'Kashmiri',
         text_content: '',
         audio_url: '',
         video_url: '',
@@ -549,20 +595,20 @@ export default function AdminPage() {
       );
 
       if (error) {
-        toast({ title: 'Error', description: error.message || 'Failed to update piece', variant: 'destructive' });
+        toast({ title: 'Error', description: error.message || 'Failed to update recitation', variant: 'destructive' });
         return;
       }
-      toast({ title: 'Success', description: 'Piece updated' });
+      toast({ title: 'Success', description: 'Recitation updated' });
     } else {
       const { error } = await safeQuery(async () =>
         await supabase.from('pieces').insert([data])
       );
 
       if (error) {
-        toast({ title: 'Error', description: error.message || 'Failed to create piece', variant: 'destructive' });
+        toast({ title: 'Error', description: error.message || 'Failed to create recitation', variant: 'destructive' });
         return;
       }
-      toast({ title: 'Success', description: 'Piece created' });
+      toast({ title: 'Success', description: 'Recitation created' });
     }
 
     setPieceDialogOpen(false);
@@ -707,43 +753,58 @@ export default function AdminPage() {
     <div className="min-h-screen bg-background">
       <Header />
       
-      <main className="container py-8">
+      <main className="container py-4 sm:py-6 md:py-8">
         <Link 
           to="/" 
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6"
+          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-4 sm:mb-6 text-sm sm:text-base"
         >
           <ChevronLeft className="w-4 h-4" />
-          Back to Home
+          <span className="hidden sm:inline">Back to Home</span>
+          <span className="sm:hidden">Back</span>
         </Link>
 
-        <h1 className="font-display text-3xl font-bold text-foreground mb-8">Admin Panel</h1>
+        <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground mb-4 sm:mb-6 md:mb-8">Admin Panel</h1>
 
         <Tabs defaultValue="pieces" className="space-y-6">
-          <TabsList className="bg-card">
-            <TabsTrigger value="pieces" className="gap-2">
-              <FileText className="w-4 h-4" />
-              Pieces ({pieces.length})
-            </TabsTrigger>
-            <TabsTrigger value="categories" className="gap-2">
-              <FolderOpen className="w-4 h-4" />
-              Categories ({categories.length})
-            </TabsTrigger>
-            <TabsTrigger value="imams" className="gap-2">
-              <Users className="w-4 h-4" />
-              Imams ({imams.length})
-            </TabsTrigger>
-            <TabsTrigger value="users" className="gap-2">
-              <UserCog className="w-4 h-4" />
-              Users ({userProfiles.length})
-            </TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 scrollbar-hide">
+            <TabsList className="bg-card w-full min-w-max inline-flex h-auto py-1">
+              <TabsTrigger value="pieces" className="gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm flex-shrink-0 whitespace-nowrap">
+                <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                <span className="hidden sm:inline">Recitations</span>
+                <span className="sm:hidden">Recitations</span>
+                <span className="hidden md:inline"> ({pieces.length})</span>
+              </TabsTrigger>
+              <TabsTrigger value="categories" className="gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm flex-shrink-0 whitespace-nowrap">
+                <FolderOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                <span>Categories</span>
+                <span className="hidden md:inline"> ({categories.length})</span>
+              </TabsTrigger>
+              <TabsTrigger value="imams" className="gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm flex-shrink-0 whitespace-nowrap">
+                <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                <span className="hidden sm:inline">Ahlulbayt</span>
+                <span className="sm:hidden">Ahlulbayt</span>
+                <span className="hidden md:inline"> ({imams.length})</span>
+              </TabsTrigger>
+              <TabsTrigger value="users" className="gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm flex-shrink-0 whitespace-nowrap">
+                <UserCog className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                <span>Users</span>
+                <span className="hidden md:inline"> ({userProfiles.length})</span>
+              </TabsTrigger>
+              <TabsTrigger value="site-settings" className="gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm flex-shrink-0 whitespace-nowrap">
+                <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                <span className="hidden sm:inline">Site Settings</span>
+                <span className="sm:hidden">Settings</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-          {/* Pieces Tab */}
+          {/* Recitations Tab */}
           <TabsContent value="pieces" className="space-y-4">
             <div className="flex justify-end">
-              <Button onClick={() => navigate('/admin/piece/new')}>
+              <Button onClick={() => navigate('/admin/piece/new')} className="w-full sm:w-auto">
                 <Plus className="w-4 h-4 mr-2" />
-                Add Piece
+                <span className="hidden sm:inline">Add Recitation</span>
+                <span className="sm:hidden">Add</span>
               </Button>
             </div>
 
@@ -754,28 +815,30 @@ export default function AdminPage() {
                 return (
                   <div
                     key={piece.id}
-                    className="flex items-center justify-between p-4 bg-card rounded-lg shadow-soft"
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-card rounded-lg shadow-soft"
                   >
-                    <div className="flex items-center gap-4 min-w-0 flex-1">
+                    <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
                       {piece.image_url && (
                         <img 
                           src={piece.image_url} 
                           alt={piece.title}
-                          className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                          className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg object-cover flex-shrink-0"
                         />
                       )}
-                      <div className="min-w-0">
-                        <h3 className="font-medium text-foreground truncate">{piece.title}</h3>
-                        <p className="text-sm text-muted-foreground">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="font-medium text-foreground truncate text-sm sm:text-base">{piece.title}</h3>
+                        <p className="text-xs sm:text-sm text-muted-foreground truncate mt-0.5">
                           {category?.name} {imam && `• ${imam.name}`} • {piece.language} {piece.reciter && `• ${piece.reciter}`}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 ml-4">
+                    <div className="flex items-center gap-2 flex-shrink-0 sm:ml-4">
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => navigate(`/admin/piece/${piece.id}/edit`)}
+                        className="h-9 w-9 sm:h-10 sm:w-10"
+                        title="Edit"
                       >
                         <Edit2 className="w-4 h-4" />
                       </Button>
@@ -783,7 +846,8 @@ export default function AdminPage() {
                         variant="ghost"
                         size="icon"
                         onClick={() => setDeleteDialog({ type: 'piece', id: piece.id })}
-                        className="text-destructive hover:text-destructive"
+                        className="text-destructive hover:text-destructive h-9 w-9 sm:h-10 sm:w-10"
+                        title="Delete"
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -793,7 +857,7 @@ export default function AdminPage() {
               })}
               {pieces.length === 0 && (
                 <div className="text-center py-12 text-muted-foreground">
-                  No pieces yet. Add your first recitation!
+                  No recitations yet. Add your first recitation!
                 </div>
               )}
             </div>
@@ -802,9 +866,10 @@ export default function AdminPage() {
           {/* Categories Tab */}
           <TabsContent value="categories" className="space-y-4">
             <div className="flex justify-end">
-              <Button onClick={() => openCategoryDialog()}>
+              <Button onClick={() => openCategoryDialog()} className="w-full sm:w-auto">
                 <Plus className="w-4 h-4 mr-2" />
-                Add Category
+                <span className="hidden sm:inline">Add Category</span>
+                <span className="sm:hidden">Add</span>
               </Button>
             </div>
 
@@ -812,17 +877,19 @@ export default function AdminPage() {
               {categories.map((category) => (
                 <div
                   key={category.id}
-                  className="flex items-center justify-between p-4 bg-card rounded-lg shadow-soft"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-card rounded-lg shadow-soft"
                 >
-                  <div>
-                    <h3 className="font-medium text-foreground">{category.name}</h3>
-                    <p className="text-sm text-muted-foreground">/{category.slug}</p>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-medium text-foreground truncate text-sm sm:text-base">{category.name}</h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate mt-0.5">/{category.slug}</p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => openCategoryDialog(category)}
+                      className="h-9 w-9 sm:h-10 sm:w-10"
+                      title="Edit"
                     >
                       <Edit2 className="w-4 h-4" />
                     </Button>
@@ -830,7 +897,8 @@ export default function AdminPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => setDeleteDialog({ type: 'category', id: category.id })}
-                      className="text-destructive hover:text-destructive"
+                      className="text-destructive hover:text-destructive h-9 w-9 sm:h-10 sm:w-10"
+                      title="Delete"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -840,12 +908,13 @@ export default function AdminPage() {
             </div>
           </TabsContent>
 
-          {/* Imams Tab */}
+          {/* Ahlulbayt Tab */}
           <TabsContent value="imams" className="space-y-4">
             <div className="flex justify-end">
-              <Button onClick={() => openImamDialog()}>
+              <Button onClick={() => openImamDialog()} className="w-full sm:w-auto">
                 <Plus className="w-4 h-4 mr-2" />
-                Add Imam
+                <span className="hidden sm:inline">Add Holy Personality</span>
+                <span className="sm:hidden">Add</span>
               </Button>
             </div>
 
@@ -853,17 +922,19 @@ export default function AdminPage() {
               {imams.map((imam) => (
                 <div
                   key={imam.id}
-                  className="flex items-center justify-between p-4 bg-card rounded-lg shadow-soft"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-card rounded-lg shadow-soft"
                 >
-                  <div>
-                    <h3 className="font-medium text-foreground">{imam.name}</h3>
-                    <p className="text-sm text-muted-foreground">{imam.description || imam.title}</p>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-medium text-foreground truncate text-sm sm:text-base">{imam.name}</h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate mt-0.5">{imam.description || imam.title}</p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => openImamDialog(imam)}
+                      className="h-9 w-9 sm:h-10 sm:w-10"
+                      title="Edit"
                     >
                       <Edit2 className="w-4 h-4" />
                     </Button>
@@ -871,7 +942,8 @@ export default function AdminPage() {
                       variant="ghost"
                       size="icon"
                       onClick={() => setDeleteDialog({ type: 'imam', id: imam.id })}
-                      className="text-destructive hover:text-destructive"
+                      className="text-destructive hover:text-destructive h-9 w-9 sm:h-10 sm:w-10"
+                      title="Delete"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -887,12 +959,12 @@ export default function AdminPage() {
               {userProfiles.map((userProfile) => (
                 <div
                   key={userProfile.id}
-                  className="flex items-center justify-between p-4 bg-card rounded-lg shadow-soft"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-card rounded-lg shadow-soft"
                 >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-medium text-foreground">{userProfile.email}</h3>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2">
+                      <h3 className="font-medium text-foreground truncate text-sm sm:text-base">{userProfile.email}</h3>
+                      <span className={`text-xs px-2 py-1 rounded-full flex-shrink-0 w-fit ${
                         userProfile.role === 'admin' 
                           ? 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200'
                           : userProfile.role === 'uploader'
@@ -902,16 +974,17 @@ export default function AdminPage() {
                         {userProfile.role}
                       </span>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <p className="text-xs sm:text-sm text-muted-foreground truncate mt-1">
                       {userProfile.full_name || 'No name provided'}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => openUserDialog(userProfile)}
                       title="Edit role"
+                      className="h-9 w-9 sm:h-10 sm:w-10"
                     >
                       <Edit2 className="w-4 h-4" />
                     </Button>
@@ -921,6 +994,7 @@ export default function AdminPage() {
                         size="icon"
                         onClick={() => openPermissionDialog(userProfile)}
                         title="Manage permissions"
+                        className="h-9 w-9 sm:h-10 sm:w-10"
                       >
                         <Key className="w-4 h-4" />
                       </Button>
@@ -928,6 +1002,146 @@ export default function AdminPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </TabsContent>
+
+          {/* Site Settings Tab */}
+          <TabsContent value="site-settings" className="space-y-4">
+            <div className="bg-card rounded-lg shadow-soft p-4 sm:p-6 space-y-4 sm:space-y-6">
+              <div>
+                <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-2">Site Branding</h2>
+                <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6">
+                  Customize your site name, tagline, and logo. Changes will appear in the header.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="site-name">Site Name</Label>
+                  <Input
+                    id="site-name"
+                    value={siteSettingsForm.site_name}
+                    onChange={(e) => setSiteSettingsForm(f => ({ ...f, site_name: e.target.value }))}
+                    placeholder="Kalam Reader"
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    This will appear in the header on all pages
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="site-tagline">Site Tagline</Label>
+                  <Input
+                    id="site-tagline"
+                    value={siteSettingsForm.site_tagline}
+                    onChange={(e) => setSiteSettingsForm(f => ({ ...f, site_tagline: e.target.value }))}
+                    placeholder="islamic poetry"
+                    className="mt-1"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    A short description that appears below the site name
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="logo-url">Logo URL</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Input
+                      id="logo-url"
+                      value={siteSettingsForm.logo_url}
+                      onChange={(e) => setSiteSettingsForm(f => ({ ...f, logo_url: e.target.value }))}
+                      placeholder="/main.png"
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => imageInputRef.current?.click()}
+                      disabled={uploading}
+                    >
+                      {uploading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const url = await handleImageUpload(file);
+                        if (url) {
+                          setSiteSettingsForm(f => ({ ...f, logo_url: url }));
+                        }
+                      }
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    URL to your logo image. Can be a local path (e.g., /main.png) or a full URL
+                  </p>
+                  {siteSettingsForm.logo_url && (
+                    <div className="mt-2">
+                      <img
+                        src={siteSettingsForm.logo_url}
+                        alt="Logo preview"
+                        className="w-20 h-20 object-contain rounded-lg border border-border"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-4 border-t border-border">
+                  <Button
+                    onClick={async () => {
+                      if (!siteSettingsForm.site_name.trim()) {
+                        toast({
+                          title: 'Error',
+                          description: 'Site name is required',
+                          variant: 'destructive',
+                        });
+                        return;
+                      }
+
+                      const { error } = await supabase
+                        .from('site_settings')
+                        .update({
+                          site_name: siteSettingsForm.site_name.trim(),
+                          site_tagline: siteSettingsForm.site_tagline?.trim() || null,
+                          logo_url: siteSettingsForm.logo_url?.trim() || null,
+                        })
+                        .eq('id', '00000000-0000-0000-0000-000000000000');
+
+                      if (error) {
+                        toast({
+                          title: 'Error',
+                          description: error.message,
+                          variant: 'destructive',
+                        });
+                      } else {
+                        toast({
+                          title: 'Success',
+                          description: 'Site settings updated successfully',
+                        });
+                        fetchData();
+                        // Reload the page to update the header
+                        setTimeout(() => window.location.reload(), 1000);
+                      }
+                    }}
+                    className="w-full sm:w-auto"
+                  >
+                    Save Settings
+                  </Button>
+                </div>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
@@ -984,11 +1198,11 @@ export default function AdminPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Imam Dialog */}
+      {/* Holy Personality Dialog */}
       <Dialog open={imamDialogOpen} onOpenChange={setImamDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingImam ? 'Edit Imam' : 'Add Imam'}</DialogTitle>
+            <DialogTitle>{editingImam ? 'Edit Holy Personality' : 'Add Holy Personality'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -1039,9 +1253,9 @@ export default function AdminPage() {
       <Dialog open={pieceDialogOpen} onOpenChange={setPieceDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingPiece ? 'Edit Piece' : 'Add New Recitation'}</DialogTitle>
+            <DialogTitle>{editingPiece ? 'Edit Recitation' : 'Add New Recitation'}</DialogTitle>
             <DialogDescription>
-              {editingPiece ? 'Update the recitation details below.' : 'Fill in the details to create a new recitation piece.'}
+              {editingPiece ? 'Update the recitation details below.' : 'Fill in the details to create a new recitation.'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -1073,13 +1287,13 @@ export default function AdminPage() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="piece-imam">Dedicated To (Imam)</Label>
+                <Label htmlFor="piece-imam">In Honor Of</Label>
                 <Select
                   value={pieceForm.imam_id || "none"}
                   onValueChange={(v) => setPieceForm(f => ({ ...f, imam_id: v === "none" ? "" : v }))}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select imam" />
+                    <SelectValue placeholder="Select Holy Personality" />
                   </SelectTrigger>
                   <SelectContent className="bg-card border border-border">
                     <SelectItem value="none">None</SelectItem>
@@ -1102,6 +1316,7 @@ export default function AdminPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-card border border-border">
+                    <SelectItem value="Kashmiri">Kashmiri</SelectItem>
                     <SelectItem value="Urdu">Urdu</SelectItem>
                     <SelectItem value="Arabic">Arabic</SelectItem>
                     <SelectItem value="Persian">Persian</SelectItem>
@@ -1223,6 +1438,7 @@ export default function AdminPage() {
                     <SelectContent>
                       <SelectItem value="Hinglish">Hinglish</SelectItem>
                       <SelectItem value="English">English</SelectItem>
+                      <SelectItem value="Kashmiri">Kashmiri</SelectItem>
                       <SelectItem value="Urdu">Urdu</SelectItem>
                       <SelectItem value="Arabic">Arabic</SelectItem>
                       <SelectItem value="Persian">Persian</SelectItem>
@@ -1236,6 +1452,7 @@ export default function AdminPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="Kashmiri">Kashmiri</SelectItem>
                       <SelectItem value="Urdu">Urdu</SelectItem>
                       <SelectItem value="Arabic">Arabic</SelectItem>
                       <SelectItem value="English">English</SelectItem>
@@ -1251,8 +1468,8 @@ export default function AdminPage() {
                 value={pieceForm.text_content}
                 onChange={(e) => setPieceForm(f => ({ ...f, text_content: e.target.value }))}
                 placeholder="Enter text here. Use 'Add Break' button to mark paragraph/shaair endings for better formatting."
-                className={`min-h-[250px] font-arabic ${targetLanguage === 'Urdu' || targetLanguage === 'Arabic' ? 'text-right' : 'text-left'}`}
-                dir={targetLanguage === 'Urdu' || targetLanguage === 'Arabic' ? 'rtl' : 'ltr'}
+                className={`min-h-[250px] font-arabic ${targetLanguage === 'Kashmiri' || targetLanguage === 'Urdu' || targetLanguage === 'Arabic' ? 'text-right' : 'text-left'}`}
+                dir={targetLanguage === 'Kashmiri' || targetLanguage === 'Urdu' || targetLanguage === 'Arabic' ? 'rtl' : 'ltr'}
               />
               <p className="text-xs text-muted-foreground mt-1">
                 💡 Tip: Click "Add Break" at the end of each paragraph/shaair for better formatting. Then translate to convert to {targetLanguage}.
@@ -1396,7 +1613,7 @@ export default function AdminPage() {
             </div>
 
               <div>
-                <Label className="text-base font-semibold mb-3 block">Imam Permissions</Label>
+                <Label className="text-base font-semibold mb-3 block">Ahlulbayt Permissions</Label>
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {imams.map((imam) => (
                   <div key={imam.id} className="flex items-center space-x-2">

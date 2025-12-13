@@ -101,7 +101,7 @@ export default function FavoritesPage() {
                 <Heart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="font-semibold text-foreground mb-2">No favorites yet</h3>
                 <p className="text-muted-foreground mb-4">
-                  Start adding pieces to your favorites while reading
+                  Start adding recitations to your favorites while reading
                 </p>
                 <Button asChild>
                   <Link to="/">Browse Content</Link>
@@ -135,7 +135,7 @@ export default function FavoritesPage() {
                 <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="font-semibold text-foreground mb-2">No reading history</h3>
                 <p className="text-muted-foreground mb-4">
-                  Pieces you read will appear here
+                  Recitations you read will appear here
                 </p>
                 <Button asChild>
                   <Link to="/">Start Reading</Link>
