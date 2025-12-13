@@ -135,13 +135,13 @@ export default function Index() {
           const getCelebratoryMessage = (eventType: string, daysUntil: number, imamName: string) => {
             if (eventType === 'birthday') {
               if (daysUntil === 0) {
-                return `🎉 Today is the blessed birthday of ${imamName}! May this day bring you peace and blessings. 🌟`;
+                return `🕊️ Today, the heavens rejoice as we honor the blessed birth of ${imamName}. May their light guide your heart and fill your soul with peace. ✨`;
               } else if (daysUntil === 1) {
-                return `✨ Tomorrow we celebrate the blessed birthday of ${imamName}! Prepare your heart for this beautiful occasion. 💚`;
+                return `🌙 Tomorrow, we gather in remembrance of the blessed birth of ${imamName}. Prepare your heart to receive the divine blessings that flow on this sacred day. 💫`;
               } else if (daysUntil <= 7) {
-                return `🌙 In just ${daysUntil} days, we'll celebrate the blessed birthday of ${imamName}! A time of joy and spiritual reflection awaits. ✨`;
+                return `🌟 In ${daysUntil} days, we will celebrate the blessed birth of ${imamName}. A time of spiritual renewal, reflection, and connection with the divine awaits your heart. 🕊️`;
               } else {
-                return `📅 Coming soon: The blessed birthday of ${imamName}! A beautiful opportunity to honor and remember. 💫`;
+                return `📿 The blessed birth of ${imamName} approaches. A sacred moment to draw closer, to reflect, and to seek the blessings that flow from this holy remembrance. ✨`;
               }
             } else if (eventType === 'martyrdom') {
               if (daysUntil === 0) {
@@ -175,21 +175,21 @@ export default function Index() {
 
               toast({
                 title: (
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2.5 rounded-xl ${
-                      nextEvent.event_type === 'birthday' ? 'bg-amber-500/20 dark:bg-amber-500/30 text-amber-700 dark:text-amber-400' :
+                  <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 w-full min-w-0">
+                    <div className={`p-2 sm:p-2.5 rounded-lg sm:rounded-xl flex-shrink-0 ${
+                      nextEvent.event_type === 'birthday' ? 'bg-gradient-to-br from-sky-400/30 to-emerald-400/30 dark:from-cyan-500/40 dark:to-emerald-500/40 text-sky-700 dark:text-cyan-300 shadow-sm' :
                       nextEvent.event_type === 'martyrdom' ? 'bg-purple-500/20 dark:bg-purple-500/30 text-purple-700 dark:text-purple-400' :
                       nextEvent.event_type === 'death' ? 'bg-slate-500/20 dark:bg-slate-500/30 text-slate-700 dark:text-slate-400' :
                       'bg-emerald-500/20 dark:bg-emerald-500/30 text-emerald-700 dark:text-emerald-400'
                     }`}>
                       {getEventIcon(nextEvent.event_type)}
                     </div>
-                    <div className="flex-1">
-                      <div className="font-bold text-base text-foreground">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-sm sm:text-base text-foreground leading-tight">
                         {nextEvent.event_name}
                       </div>
                       {nextEvent.imam && (
-                        <div className="text-sm text-muted-foreground mt-0.5">
+                        <div className="text-xs sm:text-sm text-muted-foreground mt-0.5 line-clamp-1">
                           {nextEvent.imam.name}
                           {nextEvent.imam.title && ` - ${nextEvent.imam.title}`}
                         </div>
@@ -198,17 +198,17 @@ export default function Index() {
                   </div>
                 ),
                 description: (
-                  <div className="space-y-2 mt-2">
-                    <p className="text-sm leading-relaxed font-medium text-foreground">
+                  <div className="space-y-2 sm:space-y-2 mt-2">
+                    <p className="text-xs sm:text-sm leading-relaxed font-medium text-foreground">
                       {celebratoryMessage}
                     </p>
-                    <div className="flex items-center justify-between pt-2 border-t border-border/30">
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Calendar className="w-3.5 h-3.5" />
-                        <span>{formatDate(eventThisYear)}</span>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 pt-2 border-t border-border/30">
+                      <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-muted-foreground">
+                        <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 flex-shrink-0" />
+                        <span className="break-words">{formatDate(eventThisYear)}</span>
                       </div>
-                      <div className={`px-3 py-1 rounded-full font-semibold text-xs ${
-                        nextEvent.event_type === 'birthday' ? 'bg-amber-500/20 dark:bg-amber-500/30 text-amber-700 dark:text-amber-400' :
+                      <div className={`px-2.5 sm:px-3 py-1 rounded-full font-semibold text-xs whitespace-nowrap ${
+                        nextEvent.event_type === 'birthday' ? 'bg-gradient-to-r from-sky-400/25 to-emerald-400/25 dark:from-cyan-500/35 dark:to-emerald-500/35 text-sky-700 dark:text-cyan-300 border border-sky-300/30 dark:border-cyan-400/30' :
                         nextEvent.event_type === 'martyrdom' ? 'bg-purple-500/20 dark:bg-purple-500/30 text-purple-700 dark:text-purple-400' :
                         nextEvent.event_type === 'death' ? 'bg-slate-500/20 dark:bg-slate-500/30 text-slate-700 dark:text-slate-400' :
                         'bg-emerald-500/20 dark:bg-emerald-500/30 text-emerald-700 dark:text-emerald-400'
@@ -218,7 +218,7 @@ export default function Index() {
                     </div>
                   </div>
                 ),
-                duration: 10000,
+                duration: Infinity,
                 variant: (
                   nextEvent.event_type === 'birthday' ? 'birthday' : 
                   nextEvent.event_type === 'martyrdom' ? 'martyrdom' : 
