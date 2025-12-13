@@ -15,6 +15,48 @@
 }
 
 @layer base {
+  /* Prevent zooming on the website */
+  html {
+    touch-action: pan-x pan-y;
+    -ms-touch-action: pan-x pan-y;
+    -webkit-touch-callout: none;
+  }
+
+  body {
+    /* Prevent double-tap zoom and pinch zoom */
+    touch-action: pan-x pan-y;
+    -ms-touch-action: pan-x pan-y;
+  }
+
+  /* Prevent zoom on all elements by default */
+  * {
+    touch-action: pan-x pan-y;
+    -ms-touch-action: pan-x pan-y;
+  }
+
+  /* Allow text selection for reading */
+  p, span, div, h1, h2, h3, h4, h5, h6, article, section {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  /* Prevent zoom on inputs and textareas but allow interaction */
+  input, textarea, select {
+    touch-action: pan-x pan-y;
+    -ms-touch-action: pan-x pan-y;
+  }
+
+  /* Allow custom zoom in fullscreen image viewer (it has its own zoom implementation) */
+  [data-fullscreen-image-viewer] {
+    touch-action: none !important;
+    -ms-touch-action: none !important;
+  }
+  
+  [data-fullscreen-image-viewer] * {
+    touch-action: none !important;
+    -ms-touch-action: none !important;
+  }
+
   :root {
     /* Premium Islamic color palette - Deep emerald & Rich gold */
     --background: 42 35% 97%;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Cake, Heart, Flame, Info, ChevronRight, Eye } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,6 +19,9 @@ export function UpcomingEvents() {
   const [upcomingEvents, setUpcomingEvents] = useState<AhlulBaitEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<(AhlulBaitEvent & { nextOccurrence: Date; daysUntil: number }) | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const isHorizontalScrollRef = useRef<boolean | null>(null);
 
   useEffect(() => {
     fetchUpcomingEvents();
@@ -132,7 +135,13 @@ export function UpcomingEvents() {
               <p className="text-sm text-muted-foreground">Important dates of Ahlul Bait (AS)</p>
             </div>
           </div>
-          <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+          <div 
+            className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4"
+            style={{ 
+              touchAction: 'pan-y',
+              WebkitOverflowScrolling: 'touch'
+            }}
+          >
             {[...Array(4)].map((_, i) => (
               <div key={i} className="h-24 w-64 flex-shrink-0 bg-card rounded-xl animate-pulse" />
             ))}
@@ -168,12 +177,80 @@ export function UpcomingEvents() {
         </div>
 
         <div 
+          ref={scrollContainerRef}
           className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 cursor-grab active:cursor-grabbing select-none"
           style={{ 
             WebkitUserSelect: 'none',
             userSelect: 'none',
-            touchAction: 'pan-x',
+            touchAction: 'pan-y',
             WebkitOverflowScrolling: 'touch'
+          }}
+          onTouchStart={(e) => {
+            // Don't interfere if clicking on a button
+            if ((e.target as HTMLElement).closest('button')) {
+              return;
+            }
+
+            if (e.touches.length === 1 && scrollContainerRef.current) {
+              const touch = e.touches[0];
+              touchStartRef.current = {
+                x: touch.clientX,
+                y: touch.clientY,
+                time: Date.now()
+              };
+              isHorizontalScrollRef.current = null;
+            }
+          }}
+          onTouchMove={(e) => {
+            // Don't interfere if clicking on a button
+            if ((e.target as HTMLElement).closest('button')) {
+              return;
+            }
+
+            if (e.touches.length === 1 && touchStartRef.current && scrollContainerRef.current) {
+              const touch = e.touches[0];
+              const deltaX = touch.clientX - touchStartRef.current.x;
+              const deltaY = touch.clientY - touchStartRef.current.y;
+              const absDeltaX = Math.abs(deltaX);
+              const absDeltaY = Math.abs(deltaY);
+              
+              // Determine scroll direction on first significant movement (threshold: 10px)
+              if (isHorizontalScrollRef.current === null) {
+                if (absDeltaX > 10 || absDeltaY > 10) {
+                  // If horizontal movement is significantly more than vertical, it's horizontal scroll
+                  isHorizontalScrollRef.current = absDeltaX > absDeltaY * 1.5;
+                }
+              }
+              
+              // Only prevent default and scroll horizontally if we've determined it's a horizontal scroll
+              if (isHorizontalScrollRef.current === true) {
+                e.preventDefault();
+                e.stopPropagation();
+                const element = scrollContainerRef.current;
+                element.scrollLeft -= deltaX;
+                touchStartRef.current.x = touch.clientX;
+                touchStartRef.current.y = touch.clientY;
+              } else if (isHorizontalScrollRef.current === false) {
+                // It's a vertical scroll - don't prevent default, let the page scroll naturally
+                // Just update the start position to avoid re-detection
+                touchStartRef.current.y = touch.clientY;
+              }
+              // If still null (movement too small), don't do anything yet
+            }
+          }}
+          onTouchEnd={(e) => {
+            // If it was a tap (not a scroll), allow click events
+            if (touchStartRef.current && 
+                Math.abs(touchStartRef.current.x - (e.changedTouches[0]?.clientX || 0)) < 5 &&
+                Math.abs(touchStartRef.current.y - (e.changedTouches[0]?.clientY || 0)) < 5) {
+              // It was a tap, allow default behavior
+            }
+            touchStartRef.current = null;
+            isHorizontalScrollRef.current = null;
+          }}
+          onTouchCancel={() => {
+            touchStartRef.current = null;
+            isHorizontalScrollRef.current = null;
           }}
           onMouseDown={(e) => {
             // Don't start drag if clicking on a button

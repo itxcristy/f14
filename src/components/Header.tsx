@@ -208,94 +208,135 @@ export function Header() {
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <nav className="lg:hidden py-3 sm:py-4 border-t border-border/50 animate-slide-down safe-area-inset-bottom">
-            <div className="flex flex-col gap-1">
-              <Link 
-                to="/" 
-                onClick={closeMenu} 
-                className={`flex items-center gap-3 px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base transition-colors ${
-                  isActive('/') ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary text-foreground'
-                }`}
-              >
-                <Home className="w-5 h-5 flex-shrink-0" />
-                <span>Home</span>
-              </Link>
-              <Link 
-                to="/favorites" 
-                onClick={closeMenu} 
-                className={`flex items-center gap-3 px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base transition-colors ${
-                  isActive('/favorites') ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary text-foreground'
-                }`}
-              >
-                <Heart className="w-5 h-5 flex-shrink-0" />
-                <span>Favorites</span>
-              </Link>
-              <Link 
-                to="/calendar" 
-                onClick={closeMenu} 
-                className={`flex items-center gap-3 px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base transition-colors ${
-                  isActive('/calendar') ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary text-foreground'
-                }`}
-              >
-                <Calendar className="w-5 h-5 flex-shrink-0" />
-                <span>Calendar</span>
-              </Link>
-              <Link 
-                to="/settings" 
-                onClick={closeMenu} 
-                className={`flex items-center gap-3 px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base transition-colors ${
-                  isActive('/settings') ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary text-foreground'
-                }`}
-              >
-                <Settings className="w-5 h-5 flex-shrink-0" />
-                <span>Settings</span>
-              </Link>
-              {user ? (
-                <>
-                  {role === 'admin' && (
-                    <Link 
-                      to="/admin" 
-                      onClick={closeMenu} 
-                      className={`flex items-center gap-3 px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base transition-colors ${
-                        isActive('/admin') ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary text-foreground'
-                      }`}
-                    >
-                      <Shield className="w-5 h-5 flex-shrink-0" />
-                      <span>Admin</span>
-                    </Link>
-                  )}
-                  {(role === 'uploader' || role === 'admin') && (
-                    <Link 
-                      to="/uploader" 
-                      onClick={closeMenu} 
-                      className={`flex items-center gap-3 px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base transition-colors ${
-                        isActive('/uploader') ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary text-foreground'
-                      }`}
-                    >
-                      <Upload className="w-5 h-5 flex-shrink-0" />
-                      <span>Upload</span>
-                    </Link>
-                  )}
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => { handleLogout(); closeMenu(); }} 
-                    className="justify-start px-4 py-2.5 sm:py-3 text-destructive hover:text-destructive hover:bg-destructive/10 text-sm sm:text-base"
-                  >
-                    Logout
-                  </Button>
-                </>
-              ) : (
+          <>
+            {/* Backdrop overlay - closes menu when clicked */}
+            <div 
+              className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[45] lg:hidden"
+              onClick={closeMenu}
+              aria-hidden="true"
+            />
+            <nav 
+              className="lg:hidden py-3 sm:py-4 border-t border-border/50 animate-slide-down safe-area-inset-bottom relative z-50 bg-background"
+              onClick={(e) => {
+                // Close menu when clicking on the nav container itself (empty space)
+                if (e.target === e.currentTarget) {
+                  closeMenu();
+                }
+              }}
+            >
+              <div className="flex flex-col gap-1">
                 <Link 
-                  to="/auth" 
-                  onClick={closeMenu} 
-                  className="flex items-center gap-3 px-4 py-2.5 sm:py-3 rounded-xl bg-primary text-primary-foreground text-sm sm:text-base transition-opacity hover:opacity-90"
+                  to="/" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeMenu();
+                  }} 
+                  className={`flex items-center gap-3 px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base transition-colors ${
+                    isActive('/') ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary text-foreground'
+                  }`}
                 >
-                  <Sparkles className="w-5 h-5 flex-shrink-0" />
-                  <span>Login</span>
+                  <Home className="w-5 h-5 flex-shrink-0" />
+                  <span>Home</span>
                 </Link>
-              )}
-            </div>
-          </nav>
+                <Link 
+                  to="/favorites" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeMenu();
+                  }} 
+                  className={`flex items-center gap-3 px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base transition-colors ${
+                    isActive('/favorites') ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary text-foreground'
+                  }`}
+                >
+                  <Heart className="w-5 h-5 flex-shrink-0" />
+                  <span>Favorites</span>
+                </Link>
+                <Link 
+                  to="/calendar" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeMenu();
+                  }}
+                  className={`flex items-center gap-3 px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base transition-colors ${
+                    isActive('/calendar') ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary text-foreground'
+                  }`}
+                >
+                  <Calendar className="w-5 h-5 flex-shrink-0" />
+                  <span>Calendar</span>
+                </Link>
+                <Link 
+                  to="/settings" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeMenu();
+                  }} 
+                  className={`flex items-center gap-3 px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base transition-colors ${
+                    isActive('/settings') ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary text-foreground'
+                  }`}
+                >
+                  <Settings className="w-5 h-5 flex-shrink-0" />
+                  <span>Settings</span>
+                </Link>
+                {user ? (
+                  <>
+                    {role === 'admin' && (
+                      <Link 
+                        to="/admin" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          closeMenu();
+                        }} 
+                        className={`flex items-center gap-3 px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base transition-colors ${
+                          isActive('/admin') ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary text-foreground'
+                        }`}
+                      >
+                        <Shield className="w-5 h-5 flex-shrink-0" />
+                        <span>Admin</span>
+                      </Link>
+                    )}
+                    {(role === 'uploader' || role === 'admin') && (
+                      <Link 
+                        to="/uploader" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          closeMenu();
+                        }} 
+                        className={`flex items-center gap-3 px-4 py-2.5 sm:py-3 rounded-xl text-sm sm:text-base transition-colors ${
+                          isActive('/uploader') ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary text-foreground'
+                        }`}
+                      >
+                        <Upload className="w-5 h-5 flex-shrink-0" />
+                        <span>Upload</span>
+                      </Link>
+                    )}
+                    <Button 
+                      variant="ghost" 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleLogout();
+                        closeMenu();
+                      }} 
+                      className="justify-start px-4 py-2.5 sm:py-3 text-destructive hover:text-destructive hover:bg-destructive/10 text-sm sm:text-base"
+                    >
+                      Logout
+                    </Button>
+                  </>
+                ) : (
+                  <Link 
+                    to="/auth" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      closeMenu();
+                    }} 
+                    className="flex items-center gap-3 px-4 py-2.5 sm:py-3 rounded-xl bg-primary text-primary-foreground text-sm sm:text-base transition-opacity hover:opacity-90"
+                  >
+                    <Sparkles className="w-5 h-5 flex-shrink-0" />
+                    <span>Login</span>
+                  </Link>
+                )}
+              </div>
+            </nav>
+          </>
         )}
       </div>
     </header>

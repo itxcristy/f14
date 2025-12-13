@@ -770,6 +770,7 @@ export function FullscreenImageViewer({ src, alt, isOpen, onClose }: FullscreenI
   return (
     <div
       ref={containerRef}
+      data-fullscreen-image-viewer
       className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-sm"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
@@ -782,7 +783,7 @@ export function FullscreenImageViewer({ src, alt, isOpen, onClose }: FullscreenI
       onClick={handleContainerClick}
       style={{ 
         cursor: currentZoom.current > 1 && isDragging ? 'grabbing' : currentZoom.current > 1 ? 'grab' : 'default',
-        touchAction: 'none' // Prevent browser zoom gestures
+        touchAction: 'none' // Prevent browser zoom gestures, use custom zoom
       }}
     >
       {/* Image Container */}
