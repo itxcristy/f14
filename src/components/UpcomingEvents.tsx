@@ -138,8 +138,10 @@ export function UpcomingEvents() {
           <div 
             className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4"
             style={{ 
-              touchAction: 'pan-y',
-              WebkitOverflowScrolling: 'touch'
+              touchAction: 'pan-x pan-y',
+              WebkitOverflowScrolling: 'touch',
+              maxWidth: '100%',
+              contain: 'layout style'
             }}
           >
             {[...Array(4)].map((_, i) => (
@@ -182,8 +184,11 @@ export function UpcomingEvents() {
           style={{ 
             WebkitUserSelect: 'none',
             userSelect: 'none',
-            touchAction: 'pan-y',
-            WebkitOverflowScrolling: 'touch'
+            touchAction: 'pan-x pan-y', // Allow both horizontal and vertical panning
+            WebkitOverflowScrolling: 'touch',
+            // Prevent this container from affecting viewport zoom
+            maxWidth: '100%',
+            contain: 'layout style'
           }}
           onTouchStart={(e) => {
             // Don't interfere if clicking on a button

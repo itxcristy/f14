@@ -6,6 +6,9 @@ export interface UserProfile {
   role: UserRole;
   full_name: string | null;
   avatar_url: string | null;
+  notifications_enabled?: boolean;
+  notification_token?: string | null;
+  notification_permission_granted?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -81,4 +84,13 @@ export interface AhlulBaitEvent {
   created_at: string;
   updated_at: string;
   imam?: Imam;
+}
+
+export interface Artiste {
+  id: string;
+  name: string;
+  slug: string;
+  image_url: string | null;
+  created_at: string;
+  updated_at: string;
 }

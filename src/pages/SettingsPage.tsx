@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { 
   ChevronLeft, Type, Eye, Volume2, Palette, 
-  Accessibility, RotateCcw, Download, Trash2 
+  Accessibility, RotateCcw, Download, Trash2, Bell, BellOff
 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -28,15 +28,33 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useSettings } from '@/hooks/use-settings';
 import { useFavorites } from '@/hooks/use-favorites';
 import { useReadingProgress } from '@/hooks/use-reading-progress';
+import { useNotifications } from '@/hooks/use-notifications';
 import { toast } from '@/hooks/use-toast';
+import { useState } from 'react';
 
 export default function SettingsPage() {
   const { settings, updateSetting, resetSettings } = useSettings();
   const { clearRecentlyViewed } = useFavorites();
   const { getAllProgress } = useReadingProgress();
+  const { 
+    isEnabled: notificationsEnabled, 
+    permission, 
+    isLoading: notificationsLoading,
+    requestPermission,
+    toggleNotifications 
+  } = useNotifications();
+  const [showPermissionDialog, setShowPermissionDialog] = useState(false);
 
   const handleResetSettings = () => {
     resetSettings();
@@ -313,6 +331,83 @@ export default function SettingsPage() {
             </div>
           </section>
 
+          {/* Notifications Section */}
+          <section className="bg-card rounded-2xl p-6 border border-border">
+            <h2 className="font-semibold text-foreground flex items-center gap-2 mb-6">
+              {notificationsEnabled ? (
+                <Bell className="w-5 h-5 text-primary" />
+              ) : (
+                <BellOff className="w-5 h-5 text-muted-foreground" />
+              )}
+              Notifications
+            </h2>
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5 flex-1">
+                  <Label>Event Reminders</Label>
+                  <p className="text-xs text-muted-foreground">
+                    {notificationsEnabled 
+                      ? "You'll receive notifications about upcoming events on your device"
+                      : "Get notified about upcoming Ahlul Bait events even when the app is closed"
+                    }
+                  </p>
+                </div>
+                <Switch
+                  checked={notificationsEnabled}
+                  onCheckedChange={async (checked) => {
+                    if (checked && permission.state === 'default') {
+                      setShowPermissionDialog(true);
+                    } else {
+                      await toggleNotifications();
+                    }
+                  }}
+                  disabled={notificationsLoading}
+                />
+              </div>
+
+              {permission.state === 'denied' && (
+                <>
+                  <Separator />
+                  <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+                    <p className="text-sm text-destructive font-medium mb-2">
+                      Notifications are blocked
+                    </p>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      To enable notifications, please allow them in your browser settings and refresh the page.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        toast({
+                          title: "How to enable notifications",
+                          description: "1. Click the lock icon in your browser's address bar\n2. Find 'Notifications' and set it to 'Allow'\n3. Refresh this page",
+                        });
+                      }}
+                    >
+                      Learn More
+                    </Button>
+                  </div>
+                </>
+              )}
+
+              {notificationsEnabled && (
+                <>
+                  <Separator />
+                  <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                    <p className="text-sm text-primary font-medium mb-1">
+                      ✓ Notifications Active
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      You'll receive reminders about upcoming events. Notifications work even when the app is closed.
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          </section>
+
           {/* Accessibility Section */}
           <section className="bg-card rounded-2xl p-6 border border-border">
             <h2 className="font-semibold text-foreground flex items-center gap-2 mb-6">
@@ -410,6 +505,94 @@ export default function SettingsPage() {
       </main>
 
       <Footer />
+
+      {/* Permission Request Dialog */}
+      <Dialog open={showPermissionDialog} onOpenChange={setShowPermissionDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <Bell className="w-6 h-6 text-primary" />
+              </div>
+              <DialogTitle>Enable Event Notifications</DialogTitle>
+            </div>
+            <DialogDescription className="text-left pt-2">
+              Stay connected with important dates of Ahlul Bait (AS)
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-xs font-bold text-primary">1</span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Never Miss an Event</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Get timely reminders about upcoming birthdays, anniversaries, and important dates
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-xs font-bold text-primary">2</span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Works in Background</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Receive notifications even when the website is closed - perfect for mobile devices
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-xs font-bold text-primary">3</span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Time Reminders</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    See exactly how much time is left until each event in your notifications
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg bg-muted/50 border border-border">
+              <p className="text-xs text-muted-foreground">
+                <strong className="text-foreground">Note:</strong> After enabling, you'll receive a test notification in 1-2 minutes to confirm everything is working. You can disable notifications anytime from settings.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowPermissionDialog(false)}
+            >
+              Maybe Later
+            </Button>
+            <Button
+              onClick={async () => {
+                setShowPermissionDialog(false);
+                const granted = await requestPermission();
+                if (!granted) {
+                  toast({
+                    title: "Permission needed",
+                    description: "Please allow notifications in your browser to receive event reminders",
+                    variant: "destructive"
+                  });
+                }
+              }}
+              disabled={notificationsLoading}
+            >
+              {notificationsLoading ? "Enabling..." : "Enable Notifications"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

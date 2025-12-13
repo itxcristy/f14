@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -23,6 +25,7 @@ import FavoritesPage from "./pages/FavoritesPage";
 import SettingsPage from "./pages/SettingsPage";
 import CalendarPage from "./pages/CalendarPage";
 import NotFound from "./pages/NotFound";
+import { NotificationPermissionPrompt } from "@/components/NotificationPermissionPrompt";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -32,6 +35,23 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// Component to handle service worker messages
+function ServiceWorkerHandler() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'NAVIGATE') {
+          navigate(event.data.url);
+        }
+      });
+    }
+  }, [navigate]);
+
+  return null;
+}
 
 const App = () => (
   <ErrorBoundary>
@@ -51,6 +71,8 @@ const App = () => (
                       v7_relativeSplatPath: true,
                     }}
                   >
+                    <ServiceWorkerHandler />
+                    <NotificationPermissionPrompt />
                     <Routes>
                       <Route path="/" element={<Index />} />
                       <Route path="/category/:slug" element={<CategoryPage />} />

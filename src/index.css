@@ -20,12 +20,31 @@
     touch-action: pan-x pan-y;
     -ms-touch-action: pan-x pan-y;
     -webkit-touch-callout: none;
+    zoom: 1 !important;
+    -ms-zoom: 1 !important;
+    -webkit-text-size-adjust: 100% !important;
+    -moz-text-size-adjust: 100% !important;
+    text-size-adjust: 100% !important;
+    /* Prevent horizontal overflow from affecting viewport */
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100% !important;
   }
 
   body {
     /* Prevent double-tap zoom and pinch zoom */
     touch-action: pan-x pan-y;
     -ms-touch-action: pan-x pan-y;
+    zoom: 1 !important;
+    -ms-zoom: 1 !important;
+    -webkit-text-size-adjust: 100% !important;
+    -moz-text-size-adjust: 100% !important;
+    text-size-adjust: 100% !important;
+    /* Prevent horizontal overflow from affecting viewport */
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    position: relative;
   }
 
   /* Prevent zoom on all elements by default */

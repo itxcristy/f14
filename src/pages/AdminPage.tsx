@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit2, Trash2, FolderOpen, FileText, Loader2, ChevronLeft, Upload, Image, Users, Languages, Maximize2, ZoomIn, ZoomOut, X as XIcon, Scissors, UserCog, Shield, Key, Settings } from 'lucide-react';
+import { Plus, Edit2, Trash2, FolderOpen, FileText, Loader2, ChevronLeft, Upload, Image, Users, Languages, Maximize2, ZoomIn, ZoomOut, X as XIcon, Scissors, UserCog, Shield, Key, Settings, Mic } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
@@ -40,7 +40,8 @@ import { useUserRole } from '@/hooks/use-user-role';
 import { safeQuery } from '@/lib/db-utils';
 import { logger } from '@/lib/logger';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
-import type { Category, Piece, Imam, UserProfile, UploaderPermission, SiteSettings } from '@/lib/supabase-types';
+import type { Category, Piece, Imam, UserProfile, UploaderPermission, SiteSettings, Artiste } from '@/lib/supabase-types';
+import { optimizeArtistImage, validateImageFile, formatFileSize } from '@/lib/image-optimizer';
 
 export default function AdminPage() {
   const navigate = useNavigate();
@@ -48,6 +49,7 @@ export default function AdminPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [pieces, setPieces] = useState<Piece[]>([]);
   const [imams, setImams] = useState<Imam[]>([]);
+  const [artistes, setArtistes] = useState<Artiste[]>([]);
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
@@ -96,6 +98,14 @@ export default function AdminPage() {
 
   // Delete Dialog
   const [deleteDialog, setDeleteDialog] = useState<{ type: 'category' | 'piece' | 'imam'; id: string } | null>(null);
+
+  // Artiste Image Upload Dialog
+  const [artisteImageDialogOpen, setArtisteImageDialogOpen] = useState(false);
+  const [selectedArtiste, setSelectedArtiste] = useState<Artiste | null>(null);
+  const [artisteImageFile, setArtisteImageFile] = useState<File | null>(null);
+  const [artisteImagePreview, setArtisteImagePreview] = useState<string | null>(null);
+  const [uploadingArtisteImage, setUploadingArtisteImage] = useState(false);
+  const artisteImageInputRef = useRef<HTMLInputElement>(null);
 
   // Site Settings
   const [siteSettings, setSiteSettings] = useState<SiteSettings | null>(null);
@@ -161,10 +171,11 @@ export default function AdminPage() {
 
   const fetchData = async () => {
     try {
-      const [catRes, pieceRes, imamRes, usersRes, siteSettingsRes] = await Promise.all([
+      const [catRes, pieceRes, imamRes, artistesRes, usersRes, siteSettingsRes] = await Promise.all([
         safeQuery(async () => await supabase.from('categories').select('*').order('name')),
         safeQuery(async () => await supabase.from('pieces').select('*').order('created_at', { ascending: false })),
         safeQuery(async () => await supabase.from('imams').select('*').order('order_index, name')),
+        safeQuery(async () => await (supabase as any).from('artistes').select('*').order('name')),
         safeQuery(async () => await (supabase as any).from('profiles').select('*').order('created_at', { ascending: false })),
         safeQuery(async () => await supabase.from('site_settings').select('*').eq('id', '00000000-0000-0000-0000-000000000000').maybeSingle()),
       ]);
@@ -188,6 +199,19 @@ export default function AdminPage() {
         toast({ title: 'Error', description: 'Failed to load Ahlulbayt', variant: 'destructive' });
       } else if (imamRes.data) {
         setImams(imamRes.data as Imam[]);
+      }
+
+      if (artistesRes.error) {
+        logger.error('Error fetching artistes:', artistesRes.error);
+        // Only show error toast if it's a critical error, not just empty result
+        if (artistesRes.error.message && !artistesRes.error.message.includes('permission') && !artistesRes.error.message.includes('relation') && !artistesRes.error.message.includes('does not exist')) {
+          toast({ title: 'Error', description: 'Failed to load artistes', variant: 'destructive' });
+        }
+      } else if (artistesRes.data) {
+        setArtistes(artistesRes.data as unknown as Artiste[]);
+      } else {
+        // No error and no data means empty result, which is fine
+        setArtistes([]);
       }
 
       if (usersRes.error) {
@@ -615,11 +639,149 @@ export default function AdminPage() {
     fetchData();
   };
 
+  // Artiste Image Upload Functions
+  const openArtisteImageDialog = (artiste: Artiste) => {
+    setSelectedArtiste(artiste);
+    setArtisteImageFile(null);
+    setArtisteImagePreview(artiste.image_url);
+    setArtisteImageDialogOpen(true);
+  };
+
+  const handleArtisteImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate image file
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      toast({
+        title: 'Error',
+        description: validation.error || 'Invalid image file',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setArtisteImageFile(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setArtisteImagePreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const uploadArtisteImage = async () => {
+    if (!selectedArtiste || !artisteImageFile) {
+      toast({
+        title: 'Error',
+        description: 'Please select an image file',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setUploadingArtisteImage(true);
+    try {
+      // Optimize the image for small size
+      logger.debug('Optimizing artist image', {
+        originalSize: formatFileSize(artisteImageFile.size),
+        fileName: artisteImageFile.name,
+      });
+
+      const optimizedBlob = await optimizeArtistImage(artisteImageFile);
+      logger.debug('Image optimized', {
+        optimizedSize: formatFileSize(optimizedBlob.size),
+        reduction: `${Math.round((1 - optimizedBlob.size / artisteImageFile.size) * 100)}%`,
+      });
+
+      // Create optimized file name
+      const fileName = `${selectedArtiste.slug}-${Date.now()}.webp`;
+
+      // Upload optimized image to storage
+      const { data, error } = await supabase.storage
+        .from('artist-images')
+        .upload(fileName, optimizedBlob, {
+          cacheControl: '31536000', // 1 year cache
+          upsert: false,
+          contentType: 'image/webp',
+        });
+
+      if (error) {
+        logger.error('Artiste image upload error:', error);
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to upload image',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (!data?.path) {
+        logger.error('Upload succeeded but no path returned');
+        toast({
+          title: 'Error',
+          description: 'Upload succeeded but failed to get image URL',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('artist-images')
+        .getPublicUrl(data.path);
+
+      // Update artiste record with image URL
+      const { error: updateError } = await safeQuery(async () =>
+        await (supabase as any)
+          .from('artistes')
+          .update({ image_url: publicUrl, updated_at: new Date().toISOString() })
+          .eq('id', selectedArtiste.id)
+      );
+
+      if (updateError) {
+        logger.error('Error updating artiste image URL:', updateError);
+        toast({
+          title: 'Error',
+          description: 'Image uploaded but failed to update artiste record',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      logger.debug('Artiste image uploaded successfully:', publicUrl);
+      toast({
+        title: 'Success',
+        description: `Image uploaded for ${selectedArtiste.name}`,
+      });
+
+      setArtisteImageDialogOpen(false);
+      fetchData();
+    } catch (error: any) {
+      logger.error('Unexpected error during artiste image upload:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'An unexpected error occurred',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploadingArtisteImage(false);
+    }
+  };
+
   // Delete function
   const handleDelete = async () => {
     if (!deleteDialog) return;
 
-    const table = deleteDialog.type === 'category' ? 'categories' : deleteDialog.type === 'piece' ? 'pieces' : 'imams';
+    const tableMap: Record<string, string> = {
+      category: 'categories',
+      piece: 'pieces',
+      imam: 'imams',
+    };
+    const table = tableMap[deleteDialog.type] || 'categories';
+    
     const { error } = await safeQuery(async () =>
       await supabase.from(table).delete().eq('id', deleteDialog.id)
     );
@@ -766,31 +928,34 @@ export default function AdminPage() {
         <h1 className="font-display text-2xl sm:text-3xl font-bold text-foreground mb-4 sm:mb-6 md:mb-8">Admin Panel</h1>
 
         <Tabs defaultValue="pieces" className="space-y-6">
-          <div className="overflow-x-auto -mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 scrollbar-hide">
-            <TabsList className="bg-card w-full min-w-max inline-flex h-auto py-1">
-              <TabsTrigger value="pieces" className="gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm flex-shrink-0 whitespace-nowrap">
+          <div className="-mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6">
+            <TabsList className="bg-card w-full flex flex-wrap gap-1.5 sm:gap-2 h-auto py-2 sm:py-3 justify-start">
+              <TabsTrigger value="pieces" className="gap-1.5 sm:gap-2 px-3 sm:px-4 text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-initial min-w-[120px] sm:min-w-0">
                 <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Recitations</span>
-                <span className="sm:hidden">Recitations</span>
+                <span>Recitations</span>
                 <span className="hidden md:inline"> ({pieces.length})</span>
               </TabsTrigger>
-              <TabsTrigger value="categories" className="gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm flex-shrink-0 whitespace-nowrap">
+              <TabsTrigger value="categories" className="gap-1.5 sm:gap-2 px-3 sm:px-4 text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-initial min-w-[120px] sm:min-w-0">
                 <FolderOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
                 <span>Categories</span>
                 <span className="hidden md:inline"> ({categories.length})</span>
               </TabsTrigger>
-              <TabsTrigger value="imams" className="gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm flex-shrink-0 whitespace-nowrap">
+              <TabsTrigger value="imams" className="gap-1.5 sm:gap-2 px-3 sm:px-4 text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-initial min-w-[120px] sm:min-w-0">
                 <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                <span className="hidden sm:inline">Ahlulbayt</span>
-                <span className="sm:hidden">Ahlulbayt</span>
+                <span>Ahlulbayt</span>
                 <span className="hidden md:inline"> ({imams.length})</span>
               </TabsTrigger>
-              <TabsTrigger value="users" className="gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm flex-shrink-0 whitespace-nowrap">
+              <TabsTrigger value="artistes" className="gap-1.5 sm:gap-2 px-3 sm:px-4 text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-initial min-w-[120px] sm:min-w-0">
+                <Mic className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+                <span>Artistes</span>
+                <span className="hidden md:inline"> ({artistes.length})</span>
+              </TabsTrigger>
+              <TabsTrigger value="users" className="gap-1.5 sm:gap-2 px-3 sm:px-4 text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-initial min-w-[120px] sm:min-w-0">
                 <UserCog className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
                 <span>Users</span>
                 <span className="hidden md:inline"> ({userProfiles.length})</span>
               </TabsTrigger>
-              <TabsTrigger value="site-settings" className="gap-1 sm:gap-2 px-2 sm:px-3 text-xs sm:text-sm flex-shrink-0 whitespace-nowrap">
+              <TabsTrigger value="site-settings" className="gap-1.5 sm:gap-2 px-3 sm:px-4 text-xs sm:text-sm whitespace-nowrap flex-1 sm:flex-initial min-w-[120px] sm:min-w-0">
                 <Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
                 <span className="hidden sm:inline">Site Settings</span>
                 <span className="sm:hidden">Settings</span>
@@ -950,6 +1115,68 @@ export default function AdminPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </TabsContent>
+
+          {/* Artistes Tab */}
+          <TabsContent value="artistes" className="space-y-4">
+            <div className="mb-4 p-4 bg-muted/50 rounded-lg border border-border">
+              <p className="text-sm text-muted-foreground">
+                Upload optimized images for artistes. Images are automatically resized to 200x200px and compressed for optimal performance. 
+                <span className="block mt-1 text-xs text-muted-foreground/80">
+                  Note: Artistes cannot be deleted as they are linked to recitations. You can only manage their profile images.
+                </span>
+              </p>
+            </div>
+
+            <div className="grid gap-3">
+              {artistes.map((artiste) => (
+                <div
+                  key={artiste.id}
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 p-3 sm:p-4 bg-card rounded-lg shadow-soft"
+                >
+                  <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+                    {artiste.image_url ? (
+                      <img
+                        src={artiste.image_url}
+                        alt={artiste.name}
+                        className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg object-cover flex-shrink-0 border-2 border-border"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg bg-muted flex items-center justify-center flex-shrink-0 border-2 border-dashed border-border">
+                        <Image className="w-6 h-6 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-medium text-foreground truncate text-sm sm:text-base">{artiste.name}</h3>
+                      <p className="text-xs sm:text-sm text-muted-foreground truncate mt-0.5">
+                        {artiste.image_url ? 'Image uploaded' : 'No image'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openArtisteImageDialog(artiste)}
+                      className="gap-2"
+                    >
+                      <Upload className="w-4 h-4" />
+                      <span className="hidden sm:inline">
+                        {artiste.image_url ? 'Change Image' : 'Upload Image'}
+                      </span>
+                      <span className="sm:hidden">Upload</span>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              {artistes.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Mic className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No artistes found. Artistes are automatically created when recitations are added.</p>
+                </div>
+              )}
             </div>
           </TabsContent>
 
@@ -1642,6 +1869,101 @@ export default function AdminPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setPermissionDialogOpen(false)}>Cancel</Button>
             <Button onClick={savePermissions}>Save Permissions</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Artiste Image Upload Dialog */}
+      <Dialog open={artisteImageDialogOpen} onOpenChange={setArtisteImageDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload Image for {selectedArtiste?.name}</DialogTitle>
+            <DialogDescription>
+              Upload an optimized image for this artist. Images are automatically resized to 200x200px and compressed for optimal website performance.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="artiste-image">Image File</Label>
+              <div className="mt-2">
+                <input
+                  ref={artisteImageInputRef}
+                  type="file"
+                  id="artiste-image"
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  onChange={handleArtisteImageSelect}
+                  className="hidden"
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => artisteImageInputRef.current?.click()}
+                  className="w-full gap-2"
+                >
+                  <Upload className="w-4 h-4" />
+                  Select Image
+                </Button>
+                {artisteImageFile && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Selected: {artisteImageFile.name} ({formatFileSize(artisteImageFile.size)})
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {artisteImagePreview && (
+              <div className="relative">
+                <Label>Preview</Label>
+                <div className="mt-2 relative inline-block">
+                  <img
+                    src={artisteImagePreview}
+                    alt="Preview"
+                    className="w-32 h-32 rounded-lg object-cover border-2 border-border"
+                  />
+                  {artisteImageFile && (
+                    <div className="absolute -bottom-2 left-0 right-0 text-center">
+                      <span className="text-xs bg-background px-2 py-1 rounded border border-border">
+                        Will be optimized to ~200x200px
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {selectedArtiste?.image_url && !artisteImageFile && (
+              <div>
+                <Label>Current Image</Label>
+                <div className="mt-2">
+                  <img
+                    src={selectedArtiste.image_url}
+                    alt={selectedArtiste.name}
+                    className="w-32 h-32 rounded-lg object-cover border-2 border-border"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setArtisteImageDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={uploadArtisteImage}
+              disabled={!artisteImageFile || uploadingArtisteImage}
+              className="gap-2"
+            >
+              {uploadingArtisteImage ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  Upload Image
+                </>
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

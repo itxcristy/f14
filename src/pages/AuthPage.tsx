@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Mail, Lock, Loader2 } from 'lucide-react';
+import { BookOpen, Mail, Lock, Loader2, Home, UserPlus, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -170,6 +170,20 @@ export default function AuthPage() {
     <div className="min-h-screen bg-background pattern-bg flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="bg-card rounded-2xl p-8 shadow-elevated animate-scale-in">
+          {/* Go to Home Button */}
+          <div className="flex justify-end mb-4">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/')}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Home className="w-4 h-4 mr-2" />
+              Go to Home
+            </Button>
+          </div>
+
           {/* Logo */}
           <div className="flex justify-center mb-8">
             <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center">
@@ -224,27 +238,53 @@ export default function AuthPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-12 text-base"
+              className="w-full h-12 text-base font-semibold shadow-lg"
+              size="lg"
             >
               {loading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                  {isLogin ? 'Signing in...' : 'Creating account...'}
+                </>
               ) : isLogin ? (
-                'Sign In'
+                <>
+                  <LogIn className="w-5 h-5 mr-2" />
+                  Sign In
+                </>
               ) : (
-                'Create Account'
+                <>
+                  <UserPlus className="w-5 h-5 mr-2" />
+                  Create Account
+                </>
               )}
             </Button>
           </form>
 
-          <div className="mt-6 text-center">
+          {/* Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border"></div>
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">Or</span>
+            </div>
+          </div>
+
+          {/* Secondary Action - Less Prominent */}
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground mb-2">
+              {isLogin 
+                ? "Don't have an account?" 
+                : 'Already have an account?'}
+            </p>
             <button
               type="button"
               onClick={() => setIsLogin(!isLogin)}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm font-medium text-primary hover:text-primary/80 underline underline-offset-4 transition-colors"
             >
               {isLogin 
-                ? "Don't have an account? Sign up" 
-                : 'Already have an account? Sign in'}
+                ? 'Create a new account' 
+                : 'Sign in to existing account'}
             </button>
           </div>
         </div>

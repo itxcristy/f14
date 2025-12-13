@@ -32,7 +32,7 @@ export default function Index() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ categories: 0, pieces: 0 });
-  const [artists, setArtists] = useState<Array<{ name: string; count: number }>>([]);
+  const [artists, setArtists] = useState<Array<{ name: string; count: number; image_url: string | null }>>([]);
   const { favorites } = useFavorites();
   const { getRecentlyRead } = useReadingProgress();
 
@@ -333,23 +333,44 @@ export default function Index() {
         setImams(imamRes.data as Imam[]);
       }
 
-      // Process artists/reciters
+      // Process artists/reciters - get all unique reciters from pieces (source of truth)
+      // Database triggers automatically sync to artistes table
       if (artistsRes.error) {
         logger.error('Error fetching artists:', artistsRes.error);
       } else if (artistsRes.data) {
-        // Count pieces per reciter
+        // Count pieces per reciter (from pieces table - this is the source of truth)
         const reciterCounts = new Map<string, number>();
         artistsRes.data.forEach((piece: any) => {
-          if (piece.reciter) {
+          if (piece.reciter && piece.reciter.trim() !== '') {
             reciterCounts.set(piece.reciter, (reciterCounts.get(piece.reciter) || 0) + 1);
           }
         });
         
+        // Get all unique reciter names
+        const uniqueReciters = Array.from(reciterCounts.keys());
+        
+        // Fetch artistes with images (triggers ensure they exist)
+        const artistesRes = await safeQuery(async () => 
+          await (supabase as any).from('artistes').select('name, image_url').in('name', uniqueReciters)
+        );
+        
+        // Get artiste data for images
+        const artistesMap = new Map<string, { image_url: string | null }>();
+        if (artistesRes.data) {
+          (artistesRes.data as any[]).forEach((artiste: any) => {
+            artistesMap.set(artiste.name, { image_url: artiste.image_url });
+          });
+        }
+        
         // Convert to array and sort by count (descending)
+        // Show all artists who have recitations
         const artistsArray = Array.from(reciterCounts.entries())
-          .map(([name, count]) => ({ name, count }))
-          .sort((a, b) => b.count - a.count)
-          .slice(0, 12); // Show top 12 artists
+          .map(([name, count]) => ({ 
+            name, 
+            count,
+            image_url: artistesMap.get(name)?.image_url || null
+          }))
+          .sort((a, b) => b.count - a.count);
         
         setArtists(artistsArray);
       }
@@ -585,50 +606,70 @@ export default function Index() {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                  {artists.map((artist, i) => {
-                    // Generate initials from name
-                    const getInitials = (name: string) => {
-                      const words = name.trim().split(/\s+/);
-                      if (words.length >= 2) {
-                        return (words[0][0] + words[words.length - 1][0]).toUpperCase();
-                      }
-                      return name.substring(0, 2).toUpperCase();
-                    };
+                <div 
+                  className="overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6 scrollbar-hide"
+                  style={{
+                    touchAction: 'pan-x pan-y',
+                    maxWidth: '100%',
+                    contain: 'layout style'
+                  }}
+                >
+                  <div className="flex gap-6 min-w-max pb-2">
+                    {artists.map((artist, i) => {
+                      // Generate initials from name
+                      const getInitials = (name: string) => {
+                        const words = name.trim().split(/\s+/);
+                        if (words.length >= 2) {
+                          return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+                        }
+                        return name.substring(0, 2).toUpperCase();
+                      };
 
-                    // Generate gradient color based on name
-                    const colors = [
-                      'from-primary to-accent',
-                      'from-purple-500 to-pink-500',
-                      'from-blue-500 to-cyan-500',
-                      'from-emerald-500 to-teal-500',
-                      'from-amber-500 to-orange-500',
-                      'from-rose-500 to-pink-500',
-                    ];
-                    const colorIndex = artist.name.charCodeAt(0) % colors.length;
-                    const gradient = colors[colorIndex];
+                      // Generate gradient color based on name
+                      const colors = [
+                        'from-primary to-accent',
+                        'from-purple-500 to-pink-500',
+                        'from-blue-500 to-cyan-500',
+                        'from-emerald-500 to-teal-500',
+                        'from-amber-500 to-orange-500',
+                        'from-rose-500 to-pink-500',
+                      ];
+                      const colorIndex = artist.name.charCodeAt(0) % colors.length;
+                      const gradient = colors[colorIndex];
 
-                    return (
-                      <Link
-                        key={artist.name}
-                        to={`/artist/${encodeURIComponent(artist.name)}`}
-                        className="group flex flex-col items-center p-4 rounded-xl bg-card hover:bg-secondary/50 transition-all duration-300 animate-slide-up opacity-0"
-                        style={{ animationDelay: `${i * 0.05}s` }}
-                      >
-                        <Avatar className="w-16 h-16 mb-3 group-hover:scale-110 transition-transform duration-300">
-                          <AvatarFallback className={`bg-gradient-to-br ${gradient} text-white font-bold text-lg shadow-elevated`}>
-                            {getInitials(artist.name)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <h3 className="font-semibold text-foreground text-sm text-center group-hover:text-primary transition-colors line-clamp-2">
-                          {artist.name}
-                        </h3>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {artist.count} {artist.count === 1 ? 'recitation' : 'recitations'}
-                        </p>
-                      </Link>
-                    );
-                  })}
+                      return (
+                        <Link
+                          key={artist.name}
+                          to={`/artist/${encodeURIComponent(artist.name)}`}
+                          className="group flex flex-col items-center transition-all duration-300 animate-slide-up opacity-0 flex-shrink-0"
+                          style={{ animationDelay: `${i * 0.05}s` }}
+                        >
+                          {/* Avatar */}
+                          <div className="relative mb-2">
+                            <Avatar className="w-16 h-16 group-hover:scale-110 transition-transform duration-300">
+                              {artist.image_url ? (
+                                <img
+                                  src={artist.image_url}
+                                  alt={artist.name}
+                                  className="w-full h-full object-cover rounded-full"
+                                  loading="lazy"
+                                />
+                              ) : (
+                                <AvatarFallback className={`bg-gradient-to-br ${gradient} text-white font-bold text-lg`}>
+                                  {getInitials(artist.name)}
+                                </AvatarFallback>
+                              )}
+                            </Avatar>
+                          </div>
+                          
+                          {/* Name Text - Bottom of Avatar */}
+                          <div className="text-xs font-semibold text-foreground text-center whitespace-nowrap max-w-[80px] truncate">
+                            {artist.name}
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
                 </div>
               </section>
             )}

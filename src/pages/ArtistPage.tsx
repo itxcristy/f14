@@ -6,11 +6,12 @@ import { PieceCard } from '@/components/PieceCard';
 import { supabase } from '@/integrations/supabase/client';
 import { safeQuery } from '@/lib/db-utils';
 import { logger } from '@/lib/logger';
-import type { Piece } from '@/lib/supabase-types';
+import type { Piece, Artiste } from '@/lib/supabase-types';
 
 export default function ArtistPage() {
   const { reciterName } = useParams<{ reciterName: string }>();
   const [pieces, setPieces] = useState<Piece[]>([]);
+  const [artiste, setArtiste] = useState<Artiste | null>(null);
   const [loading, setLoading] = useState(true);
   const [artistName, setArtistName] = useState<string>('');
 
@@ -22,19 +23,34 @@ export default function ArtistPage() {
       const decodedName = decodeURIComponent(reciterName);
       setArtistName(decodedName);
 
-      // Get pieces for this reciter
-      const { data, error } = await safeQuery(async () =>
-        await supabase
-          .from('pieces')
-          .select('*')
-          .eq('reciter', decodedName)
-          .order('created_at', { ascending: false })
-      );
+      // Fetch artiste data and pieces in parallel
+      const [artisteRes, piecesRes] = await Promise.all([
+        safeQuery(async () =>
+          await (supabase as any)
+            .from('artistes')
+            .select('*')
+            .eq('name', decodedName)
+            .maybeSingle()
+        ),
+        safeQuery(async () =>
+          await supabase
+            .from('pieces')
+            .select('*')
+            .eq('reciter', decodedName)
+            .order('created_at', { ascending: false })
+        ),
+      ]);
 
-      if (error) {
-        logger.error('Error fetching artist recitations:', error);
-      } else if (data) {
-        setPieces(data as Piece[]);
+      if (artisteRes.error) {
+        logger.error('Error fetching artiste:', artisteRes.error);
+      } else if (artisteRes.data) {
+        setArtiste(artisteRes.data as Artiste);
+      }
+
+      if (piecesRes.error) {
+        logger.error('Error fetching artist recitations:', piecesRes.error);
+      } else if (piecesRes.data) {
+        setPieces(piecesRes.data as Piece[]);
       }
 
       setLoading(false);
@@ -79,9 +95,18 @@ export default function ArtistPage() {
         {/* Hero */}
         <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-card to-accent/10 p-8 mb-8">
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground text-2xl font-bold shadow-elevated">
-              {getInitials(artistName)}
-            </div>
+            {artiste?.image_url ? (
+              <img
+                src={artiste.image_url}
+                alt={artistName}
+                className="w-20 h-20 rounded-2xl object-cover border-2 border-primary/20 shadow-elevated"
+                loading="eager"
+              />
+            ) : (
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center text-primary-foreground text-2xl font-bold shadow-elevated">
+                {getInitials(artistName)}
+              </div>
+            )}
             <div>
               <h1 className="font-display text-3xl font-bold text-foreground">
                 {artistName}

@@ -3,6 +3,115 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover, user-scalable=no" />
+    <script>
+      // Immediately prevent zoom on page load (before any content renders)
+      (function() {
+        // Function to detect and fix zoom
+        function detectAndFixZoom() {
+          // Check for zoom using multiple methods
+          var zoom = 1;
+          var hasZoom = false;
+          
+          // Method 1: Visual Viewport API
+          if (window.visualViewport && window.visualViewport.scale) {
+            zoom = window.visualViewport.scale;
+            if (zoom !== 1) hasZoom = true;
+          }
+          // Method 2: Width comparison
+          else if (window.outerWidth && window.innerWidth && window.outerWidth !== window.innerWidth) {
+            zoom = window.outerWidth / window.innerWidth;
+            if (Math.abs(zoom - 1) > 0.01) hasZoom = true;
+          }
+          
+          // If zoom detected, fix it
+          if (hasZoom) {
+            // Force viewport reset
+            var viewport = document.querySelector('meta[name="viewport"]');
+            if (viewport) {
+              var parent = viewport.parentNode;
+              var content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover, user-scalable=no';
+              viewport.setAttribute('content', content);
+              // Re-apply by removing and re-adding
+              if (parent) {
+                parent.removeChild(viewport);
+                parent.insertBefore(viewport, parent.firstChild);
+              }
+            }
+            
+            // Reset CSS zoom
+            if (document.body) document.body.style.zoom = '1';
+            if (document.documentElement) document.documentElement.style.zoom = '1';
+          }
+        }
+        
+        // Run immediately
+        detectAndFixZoom();
+        
+        // Run on DOM ready
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', detectAndFixZoom);
+        } else {
+          detectAndFixZoom();
+        }
+        
+        // Run periodically to catch late zoom
+        setInterval(detectAndFixZoom, 500);
+        
+        // Reset zoom immediately
+        if (document.body && document.body.style.zoom !== undefined) {
+          document.body.style.zoom = '1';
+        }
+        if (document.documentElement && document.documentElement.style.zoom !== undefined) {
+          document.documentElement.style.zoom = '1';
+        }
+        
+        // Ensure viewport meta is correct - force re-application
+        var viewport = document.querySelector('meta[name="viewport"]');
+        if (viewport) {
+          var parent = viewport.parentNode;
+          var content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover, user-scalable=no';
+          // Force browser to re-parse by removing and re-adding
+          if (parent) {
+            parent.removeChild(viewport);
+            var newViewport = document.createElement('meta');
+            newViewport.setAttribute('name', 'viewport');
+            newViewport.setAttribute('content', content);
+            parent.insertBefore(newViewport, parent.firstChild);
+          }
+        }
+        
+        // Prevent zoom on touch events (early binding)
+        var lastTouchEnd = 0;
+        document.addEventListener('touchstart', function(e) {
+          if (e.target && e.target.closest && e.target.closest('[data-fullscreen-image-viewer]')) {
+            return;
+          }
+          if (e.touches.length > 1) {
+            e.preventDefault();
+          }
+        }, { passive: false });
+        
+        document.addEventListener('touchend', function(e) {
+          if (e.target && e.target.closest && e.target.closest('[data-fullscreen-image-viewer]')) {
+            return;
+          }
+          var now = Date.now();
+          if (now - lastTouchEnd <= 300) {
+            e.preventDefault();
+          }
+          lastTouchEnd = now;
+        }, { passive: false });
+        
+        // Monitor for zoom changes
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener('resize', function() {
+            if (window.visualViewport.scale !== 1) {
+              detectAndFixZoom();
+            }
+          });
+        }
+      })();
+    </script>
     
     <!-- Primary Meta Tags -->
     <title>Kalam Reader - islamic poetry & Content Reader | Naat, Noha, Dua</title>
