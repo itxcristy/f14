@@ -1,4 +1,4 @@
-import { sanitizeYouTubeUrl } from '@/lib/sanitize';
+import { sanitizeYouTubeUrl, sanitizeUrl } from '@/lib/sanitize';
 
 interface VideoPlayerProps {
   src: string;
@@ -54,6 +54,14 @@ export function VideoPlayer({ src, title }: VideoPlayerProps) {
         controls
         className="w-full aspect-video"
         preload="metadata"
+        onError={(e) => {
+          const target = e.target as HTMLVideoElement;
+          target.style.display = 'none';
+          const errorDiv = document.createElement('div');
+          errorDiv.className = 'bg-card rounded-xl p-8 text-center text-muted-foreground';
+          errorDiv.textContent = 'Failed to load video. The URL may be invalid or the video may not be accessible.';
+          target.parentElement?.appendChild(errorDiv);
+        }}
       >
         Your browser does not support the video tag.
       </video>

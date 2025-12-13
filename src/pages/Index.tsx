@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Sparkles, ArrowRight, TrendingUp, Clock, Star, History, Heart, Users, Mic } from 'lucide-react';
+import { BookOpen, Sparkles, ArrowRight, TrendingUp, Clock, Star, History, Heart, Users, Mic, Cake, Flame, Info, Calendar } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { CategoryCard } from '@/components/CategoryCard';
@@ -17,7 +17,6 @@ import { logger } from '@/lib/logger';
 import { checkRateLimit, RATE_LIMITS } from '@/lib/rate-limit';
 import { toast } from '@/hooks/use-toast';
 import type { Category, Piece, Imam, AhlulBaitEvent } from '@/lib/supabase-types';
-import { Cake, Heart, Flame, Info, Calendar } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 export default function Index() {
@@ -36,6 +35,209 @@ export default function Index() {
   const [artists, setArtists] = useState<Array<{ name: string; count: number }>>([]);
   const { favorites } = useFavorites();
   const { getRecentlyRead } = useReadingProgress();
+
+  const showUpcomingEventToast = async () => {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const { data, error } = await safeQuery(async () =>
+        await supabase
+          .from('ahlul_bait_events')
+          .select(`
+            *,
+            imam:imams(*)
+          `)
+          .eq('is_annual', true)
+          .order('event_date', { ascending: true })
+          .limit(10)
+      );
+
+      if (error) {
+        logger.error('Error fetching upcoming event for toast:', error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        // Find the next upcoming event
+        const eventsWithNextOccurrence = data
+          .map((event: any) => {
+            const eventDate = new Date(event.event_date);
+            const currentYear = today.getFullYear();
+            
+            let eventThisYear = new Date(currentYear, eventDate.getMonth(), eventDate.getDate());
+            
+            if (eventThisYear < today) {
+              eventThisYear = new Date(currentYear + 1, eventDate.getMonth(), eventDate.getDate());
+            }
+            
+            const daysUntil = Math.ceil((eventThisYear.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            
+            return {
+              ...event,
+              nextOccurrence: eventThisYear,
+              daysUntil
+            };
+          })
+          .filter((event: any) => event.daysUntil >= 0 && event.daysUntil <= 30) // Show events within next 30 days
+          .sort((a: any, b: any) => a.daysUntil - b.daysUntil);
+
+        if (eventsWithNextOccurrence.length > 0) {
+          const nextEvent = eventsWithNextOccurrence[0];
+          const eventDate = new Date(nextEvent.event_date);
+          const currentYear = today.getFullYear();
+          let eventThisYear = new Date(currentYear, eventDate.getMonth(), eventDate.getDate());
+          
+          if (eventThisYear < today) {
+            eventThisYear = new Date(currentYear + 1, eventDate.getMonth(), eventDate.getDate());
+          }
+
+          const formatDate = (date: Date) => {
+            return date.toLocaleDateString('en-US', { 
+              month: 'long', 
+              day: 'numeric',
+              year: 'numeric'
+            });
+          };
+
+          const getDaysUntilText = (days: number) => {
+            if (days === 0) return 'Today';
+            if (days === 1) return 'Tomorrow';
+            return `In ${days} days`;
+          };
+
+          const getEventIcon = (eventType: string) => {
+            switch (eventType) {
+              case 'birthday':
+                return <Cake className="w-5 h-5" />;
+              case 'death':
+                return <Heart className="w-5 h-5" />;
+              case 'martyrdom':
+                return <Flame className="w-5 h-5" />;
+              default:
+                return <Info className="w-5 h-5" />;
+            }
+          };
+
+          const getEventTypeLabel = (eventType: string) => {
+            switch (eventType) {
+              case 'birthday':
+                return 'Birthday';
+              case 'death':
+                return 'Death Anniversary';
+              case 'martyrdom':
+                return 'Martyrdom';
+              default:
+                return 'Event';
+            }
+          };
+
+          const getCelebratoryMessage = (eventType: string, daysUntil: number, imamName: string) => {
+            if (eventType === 'birthday') {
+              if (daysUntil === 0) {
+                return `🎉 Today is the blessed birthday of ${imamName}! May this day bring you peace and blessings. 🌟`;
+              } else if (daysUntil === 1) {
+                return `✨ Tomorrow we celebrate the blessed birthday of ${imamName}! Prepare your heart for this beautiful occasion. 💚`;
+              } else if (daysUntil <= 7) {
+                return `🌙 In just ${daysUntil} days, we'll celebrate the blessed birthday of ${imamName}! A time of joy and spiritual reflection awaits. ✨`;
+              } else {
+                return `📅 Coming soon: The blessed birthday of ${imamName}! A beautiful opportunity to honor and remember. 💫`;
+              }
+            } else if (eventType === 'martyrdom') {
+              if (daysUntil === 0) {
+                return `🕊️ Today we remember the martyrdom of ${imamName}. May their sacrifice inspire us. 💔`;
+              } else if (daysUntil <= 7) {
+                return `🕯️ In ${daysUntil} days, we commemorate the martyrdom of ${imamName}. A time for reflection and remembrance. 🌹`;
+              } else {
+                return `📿 Coming soon: We'll remember the martyrdom of ${imamName}. A moment to reflect on their sacrifice. 🕊️`;
+              }
+            } else {
+              if (daysUntil === 0) {
+                return `🌟 Today we honor ${imamName}. May their memory be a source of guidance. ✨`;
+              } else {
+                return `📅 In ${daysUntil} days, we'll honor ${imamName}. A special time to remember and reflect. 💚`;
+              }
+            }
+          };
+
+          // Check if toast was already shown today
+          const lastShownDate = localStorage.getItem('upcomingEventToastDate');
+          const todayStr = today.toDateString();
+          
+          if (lastShownDate !== todayStr) {
+            // Show toast after a short delay for better UX
+            setTimeout(() => {
+              const celebratoryMessage = getCelebratoryMessage(
+                nextEvent.event_type,
+                nextEvent.daysUntil,
+                nextEvent.imam?.name || 'Ahlul Bait'
+              );
+
+              toast({
+                title: (
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2.5 rounded-xl ${
+                      nextEvent.event_type === 'birthday' ? 'bg-amber-500/20 dark:bg-amber-500/30 text-amber-700 dark:text-amber-400' :
+                      nextEvent.event_type === 'martyrdom' ? 'bg-purple-500/20 dark:bg-purple-500/30 text-purple-700 dark:text-purple-400' :
+                      nextEvent.event_type === 'death' ? 'bg-slate-500/20 dark:bg-slate-500/30 text-slate-700 dark:text-slate-400' :
+                      'bg-emerald-500/20 dark:bg-emerald-500/30 text-emerald-700 dark:text-emerald-400'
+                    }`}>
+                      {getEventIcon(nextEvent.event_type)}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-bold text-base text-foreground">
+                        {nextEvent.event_name}
+                      </div>
+                      {nextEvent.imam && (
+                        <div className="text-sm text-muted-foreground mt-0.5">
+                          {nextEvent.imam.name}
+                          {nextEvent.imam.title && ` - ${nextEvent.imam.title}`}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ),
+                description: (
+                  <div className="space-y-2 mt-2">
+                    <p className="text-sm leading-relaxed font-medium text-foreground">
+                      {celebratoryMessage}
+                    </p>
+                    <div className="flex items-center justify-between pt-2 border-t border-border/30">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span>{formatDate(eventThisYear)}</span>
+                      </div>
+                      <div className={`px-3 py-1 rounded-full font-semibold text-xs ${
+                        nextEvent.event_type === 'birthday' ? 'bg-amber-500/20 dark:bg-amber-500/30 text-amber-700 dark:text-amber-400' :
+                        nextEvent.event_type === 'martyrdom' ? 'bg-purple-500/20 dark:bg-purple-500/30 text-purple-700 dark:text-purple-400' :
+                        nextEvent.event_type === 'death' ? 'bg-slate-500/20 dark:bg-slate-500/30 text-slate-700 dark:text-slate-400' :
+                        'bg-emerald-500/20 dark:bg-emerald-500/30 text-emerald-700 dark:text-emerald-400'
+                      }`}>
+                        {getDaysUntilText(nextEvent.daysUntil)}
+                      </div>
+                    </div>
+                  </div>
+                ),
+                duration: 10000,
+                variant: (
+                  nextEvent.event_type === 'birthday' ? 'birthday' : 
+                  nextEvent.event_type === 'martyrdom' ? 'martyrdom' : 
+                  nextEvent.event_type === 'death' ? 'death' : 
+                  'celebration'
+                ) as any,
+                className: "animate-in slide-in-from-right-full",
+              });
+
+              // Store that we showed the toast today
+              localStorage.setItem('upcomingEventToastDate', todayStr);
+            }, 1500); // Show after 1.5 seconds
+          }
+        }
+      }
+    } catch (error) {
+      logger.error('Unexpected error showing upcoming event toast:', error);
+    }
+  };
 
   useEffect(() => {
     // Wait for role loading to complete before fetching data

@@ -23,11 +23,15 @@ export function PieceCard({ piece, index = 0, compact = false }: PieceCardProps)
       >
         {/* Cover Image */}
         {hasImage && (
-          <div className="relative h-48 overflow-hidden">
+          <div className="relative h-48 overflow-hidden bg-secondary">
             <img 
               src={piece.image_url!} 
               alt={piece.title}
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+              }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-card via-card/50 to-transparent" />
           </div>
@@ -92,11 +96,15 @@ export function PieceCard({ piece, index = 0, compact = false }: PieceCardProps)
     >
       {/* Cover Image */}
       {hasImage && (
-        <div className="relative h-40 overflow-hidden">
+        <div className="relative h-40 overflow-hidden bg-secondary">
           <img 
             src={piece.image_url!} 
             alt={piece.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+            }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-card to-transparent" />
         </div>

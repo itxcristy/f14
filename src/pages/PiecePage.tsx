@@ -303,6 +303,15 @@ export default function PiecePage() {
                 alt={piece.title}
                 className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-[1.02]"
                 loading="lazy"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  const parent = target.parentElement;
+                  if (parent) {
+                    parent.classList.add('bg-muted');
+                    parent.innerHTML = '<div class="flex items-center justify-center h-full text-muted-foreground">Image unavailable</div>';
+                  }
+                }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -422,6 +431,14 @@ export default function PiecePage() {
                 className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg cursor-pointer hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
                 onClick={() => setImageViewerOpen(true)}
                 loading="lazy"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  const parent = target.parentElement;
+                  if (parent) {
+                    parent.innerHTML = '<div class="text-center text-muted-foreground p-8">Image unavailable</div>';
+                  }
+                }}
               />
               <p className="text-sm text-muted-foreground mt-4 text-center">
                 Click image to view in full size
